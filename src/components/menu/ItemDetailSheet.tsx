@@ -93,13 +93,17 @@ export default function ItemDetailSheet({ item, onClose, onAddToCart, onViewAR }
                         {/* Scrollable Content */}
                         <div className="flex-1 overflow-y-auto hide-scrollbar">
                             {/* Hero Image */}
-                            <div className="relative h-64 overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={item.image_url}
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                />
+                            <div className="relative h-64 overflow-hidden flex items-center justify-center bg-zinc-900">
+                                {item.image_url ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                        src={item.image_url}
+                                        alt={item.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="text-6xl opacity-30">🍽️</div>
+                                )}
                                 <div className="absolute inset-0 bg-linear-to-t from-[#0a0a0f] via-transparent to-transparent" />
 
                                 {/* Close button */}

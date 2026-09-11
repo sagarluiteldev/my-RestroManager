@@ -152,7 +152,7 @@ export default function Testimonials() {
                         >
                             <button 
                                 onClick={() => setSelectedTestimonial(null)}
-                                className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                className="absolute top-6 right-6 p-2 rounded-full hover:bg-black/5 transition-colors"
                             >
                                 <X className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
                             </button>

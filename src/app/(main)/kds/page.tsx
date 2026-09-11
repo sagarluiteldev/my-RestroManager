@@ -22,6 +22,7 @@ const statusConfig: Record<KitchenOrder['status'], { label: string; color: strin
     preparing: { label: 'Preparing', color: 'var(--info)', bg: 'rgba(91,155,213,0.1)', icon: ChefHat },
     ready: { label: 'Ready', color: 'var(--success)', bg: 'rgba(46,204,113,0.1)', icon: CheckCircle },
     completed: { label: 'Done', color: 'var(--text-muted)', bg: 'rgba(77,84,102,0.08)', icon: CheckCircle },
+    cancelled: { label: 'Cancelled', color: 'var(--danger)', bg: 'rgba(239,68,68,0.1)', icon: AlertCircle },
 };
 
 const statusFlow: KitchenOrder['status'][] = ['pending', 'preparing', 'ready', 'completed'];
@@ -147,16 +148,24 @@ export default function KitchenPage() {
                                     </div>
 
                                     <div className="px-6 py-5 space-y-3 flex-1">
-                                        {order.items.map((item, i) => (
-                                            <div key={i} className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img src={item.menu_item.image_url} alt="" className="w-full h-full object-cover" />
+                                        {(order.items || []).map((item: any, i: number) => {
+                                            const itemName = item.menu_item?.name || item.name || 'Menu Item';
+                                            const itemImage = item.menu_item?.image_url || item.image_url || (item.menu_item as any)?.image || '';
+                                            return (
+                                                <div key={i} className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm border flex items-center justify-center" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
+                                                        {itemImage ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img src={itemImage} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <ChefHat className="w-5 h-5 opacity-40" />
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm font-bold flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{itemName}</p>
+                                                    <span className="text-sm font-black shrink-0 px-2.5 py-1 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>×{item.quantity}</span>
                                                 </div>
-                                                <p className="text-sm font-bold flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{item.menu_item.name}</p>
-                                                <span className="text-sm font-black shrink-0 px-2.5 py-1 rounded-md" style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>×{item.quantity}</span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     {order.specialNotes && (

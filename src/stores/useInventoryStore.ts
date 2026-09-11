@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface StockItem {
     id: string;
@@ -33,19 +34,24 @@ interface InventoryState {
     removeItem: (id: string) => void;
 }
 
-export const useInventoryStore = create<InventoryState>((set) => ({
-    items: initialStockData,
-    addItem: (item) => set((state) => {
-        const timestamp = new Date().toISOString().split('T')[0];
-        const newId = `INV-${(state.items.length + 1).toString().padStart(3, '0')}`;
-        return {
-            items: [{ ...item, id: newId, lastRestocked: timestamp }, ...state.items]
-        };
-    }),
-    updateItem: (id, updatedFields) => set((state) => ({
-        items: state.items.map((i) => i.id === id ? { ...i, ...updatedFields } : i)
-    })),
-    removeItem: (id) => set((state) => ({
-        items: state.items.filter((i) => i.id !== id)
-    })),
-}));
+export const useInventoryStore = create<InventoryState>()(
+    persist(
+        (set) => ({
+            items: initialStockData,
+            addItem: (item) => set((state) => {
+                const timestamp = new Date().toISOString().split('T')[0];
+                const newId = `INV-${(state.items.length + 1).toString().padStart(3, '0')}`;
+                return {
+                    items: [{ ...item, id: newId, lastRestocked: timestamp }, ...state.items]
+                };
+            }),
+            updateItem: (id, updatedFields) => set((state) => ({
+                items: state.items.map((i) => i.id === id ? { ...i, ...updatedFields } : i)
+            })),
+            removeItem: (id) => set((state) => ({
+                items: state.items.filter((i) => i.id !== id)
+            })),
+        }),
+        { name: 'restaurant-inventory' }
+    )
+);

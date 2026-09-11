@@ -8,18 +8,18 @@
 :root,
 [data-theme="light"] {
   /* 60% Background & Surfaces */
-  --bg-primary: #FAFAFA;
+  --bg-primary: #FFFFFF;
   --bg-secondary: #FFFFFF;
   --bg-card: #FFFFFF;
-  --bg-elevated: #F4F4F5;
+  --bg-elevated: #F8F9FA;
   --bg-input: #FFFFFF;
 
   /* 30% Borders & Muted Elements */
-  --border: #E4E4E7;
+  --border: #ECEEF1;
   --border-hover: #D4D4D8;
-  --text-primary: #09090B;
-  --text-secondary: #52525B;
-  --text-muted: #A1A1AA;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
 
   /* 10% Accents (Jet Black) */
   --accent: #09090B;
@@ -43,6 +43,19 @@
   --chart-3: #A1A1AA;
   --chart-4: #D4D4D8;
   --chart-5: #71717A;
+
+  /* Dashboard pastel palette */
+  --dash-sales-bg: #DEF0FF;
+  --dash-sales-icon-bg: #C8E4FC;
+  --dash-sales-icon: #0284C7;
+  --dash-expense-bg: #FFE8DB;
+  --dash-expense-icon-bg: #FCD5C2;
+  --dash-expense-icon: #EA580C;
+  --dash-revenue-bg: #FFFAC7;
+  --dash-revenue-icon-bg: #FCEEA6;
+  --dash-revenue-icon: #CA8A04;
+  --dash-banner-yellow: #FEFBC7;
+  --dash-banner-yellow-dark: #FEF08A;
 }
 
 [data-theme="dark"] {
@@ -64,7 +77,6 @@
   --accent-light: rgba(255, 255, 255, 0.1);
   --accent-text: #FFFFFF;
   --accent-fg: #09090B;
-  /* Black text on White buttons */
 
   --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 
@@ -78,6 +90,19 @@
   --chart-3: #52525B;
   --chart-4: #3F3F46;
   --chart-5: #71717A;
+
+  /* Dashboard pastel palette dark mode */
+  --dash-sales-bg: #142438;
+  --dash-sales-icon-bg: #1e3a5f;
+  --dash-sales-icon: #38bdf8;
+  --dash-expense-bg: #2d1d16;
+  --dash-expense-icon-bg: #452a1e;
+  --dash-expense-icon: #fb923c;
+  --dash-revenue-bg: #2e2a14;
+  --dash-revenue-icon-bg: #453e1b;
+  --dash-revenue-icon: #facc15;
+  --dash-banner-yellow: #292415;
+  --dash-banner-yellow-dark: #3e361c;
 }
 
 /* ============ BASE ============ */

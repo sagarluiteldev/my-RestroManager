@@ -94,7 +94,7 @@ export const useCartStore = create<CartState>()(
             getTotal: () => {
                 const { items, promoCode } = get();
                 const subtotal = items.reduce(
-                    (sum, ci) => sum + ci.menu_item.price * ci.quantity,
+                    (sum, ci: any) => sum + (ci.menu_item?.price ?? ci.price ?? 0) * (ci.quantity || 1),
                     0
                 );
                 const discount = promoCode ? subtotal * 0.1 : 0;

@@ -12,6 +12,11 @@ export default function LandingLayout({
         // Force light theme for landing
         document.documentElement.setAttribute('data-theme', 'light');
         document.documentElement.classList.remove('dark');
+        try {
+            localStorage.removeItem('myrestromanager-theme');
+        } catch {
+            // ignore
+        }
     }, []);
 
     return (

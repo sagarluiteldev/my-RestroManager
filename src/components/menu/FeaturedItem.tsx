@@ -36,9 +36,13 @@ export default function FeaturedItem({ item }: FeaturedItemProps) {
     return (
         <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <div className="flex flex-col lg:flex-row">
-                <div className="relative lg:w-[320px] h-48 lg:h-auto shrink-0 overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                <div className="relative lg:w-[320px] h-48 lg:h-auto shrink-0 overflow-hidden flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                    {item.image_url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="text-4xl opacity-30">🍽️</div>
+                    )}
                 </div>
                 <div className="flex-1 p-4 lg:p-5 space-y-3.5">
                     <div>

@@ -30,13 +30,17 @@ export default function MenuGrid({ items }: MenuGridProps) {
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                     onClick={() => handleAdd(item)}
                 >
-                    <div className="relative h-28 sm:h-32 overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={item.image_url} alt={item.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            loading="lazy"
-                        />
+                    <div className="relative h-28 sm:h-32 overflow-hidden flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                        {item.image_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                                src={item.image_url} alt={item.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                loading="lazy"
+                            />
+                        ) : (
+                            <span className="text-3xl opacity-30">🍽️</span>
+                        )}
                         {!item.is_available && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(231,76,60,0.2)', color: 'var(--danger)' }}>Sold Out</span>

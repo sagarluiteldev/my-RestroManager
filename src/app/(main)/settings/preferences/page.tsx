@@ -1,98 +1,385 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { WarningCircle, SlidersHorizontal } from '@phosphor-icons/react';
-import { useThemeStore } from '@/stores/useThemeStore';
-import { createClient } from '@/lib/supabase';
-import { localDb } from '@/lib/db/localDb';
-import { useRoleStore } from '@/stores/useRoleStore';
-import toast from 'react-hot-toast';
-import { useState } from 'react';
+import {
+    SlidersHorizontal,
+    Receipt,
+    SpeakerHigh,
+    Package,
+    ForkKnife,
+    FloppyDisk,
+    Bell,
+    CheckCircle,
+} from '@phosphor-icons/react';
+import toast, { Toaster } from 'react-hot-toast';
 
-export default function PreferencesSettingsPage() {
-    const { theme, toggleTheme } = useThemeStore();
-    const { restaurantId } = useRoleStore();
-    const [isResetting, setIsResetting] = useState(false);
+interface OperationalPreferences {
+    vatEnabled: boolean;
+    vatRate: number;
+    serviceChargeEnabled: boolean;
+    serviceChargeRate: number;
+    currencySymbol: string;
+    kdsSoundEnabled: boolean;
+    ticketAlertMinutes: number;
+    autoDepleteInventory: boolean;
+    lowStockThreshold: number;
+    channelDineIn: boolean;
+    channelTakeaway: boolean;
+    channelDelivery: boolean;
+}
 
-    const handleResetDemoData = async () => {
-        if (!confirm('Are you sure you want to delete all orders? This cannot be undone.')) return;
-        setIsResetting(true);
+const DEFAULT_PREFERENCES: OperationalPreferences = {
+    vatEnabled: true,
+    vatRate: 13,
+    serviceChargeEnabled: true,
+    serviceChargeRate: 10,
+    currencySymbol: 'Rs.',
+    kdsSoundEnabled: true,
+    ticketAlertMinutes: 15,
+    autoDepleteInventory: true,
+    lowStockThreshold: 5,
+    channelDineIn: true,
+    channelTakeaway: true,
+    channelDelivery: true,
+};
+
+function playAudioChime() {
+    try {
+        const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {
+        console.warn('Audio preview not supported', e);
+    }
+}
+
+export default function SettingsPreferencesPage() {
+    const [prefs, setPrefs] = useState<OperationalPreferences>(DEFAULT_PREFERENCES);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
         try {
-            const supabase = createClient();
-            
-            const { error } = await supabase.from('orders').delete().eq('restaurant_id', restaurantId);
-            if (error) throw error;
-            
-            await localDb.sync_queue.clear();
-            
-            toast.success('Demo data reset successfully!');
-        } catch (err) {
-            console.error('Reset failed:', err);
-            toast.error('Failed to reset demo data');
-        } finally {
-            setIsResetting(false);
+            const saved = localStorage.getItem('myrestro_operational_preferences');
+            if (saved) {
+                setPrefs(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.warn('Failed to load preferences from storage', e);
         }
+    }, []);
+
+    const toggle = (field: keyof OperationalPreferences) => {
+        setPrefs((prev) => ({ ...prev, [field]: !prev[field] }));
     };
 
-    const Toggle = ({ value, onChange }: { value: boolean; onChange: () => void }) => (
-        <button onClick={onChange} className="relative w-11 h-6 rounded-full transition-all"
-            style={{ background: value ? 'var(--text-primary)' : 'var(--bg-input)', border: `1px solid ${value ? 'var(--text-primary)' : 'var(--border)'}` }}>
-            <motion.div animate={{ x: value ? 22 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="absolute top-[3px] w-4 h-4 rounded-full shadow-sm" style={{ background: 'var(--bg-primary)' }} />
-        </button>
-    );
+    const setNumber = (field: keyof OperationalPreferences, val: number) => {
+        setPrefs((prev) => ({ ...prev, [field]: val }));
+    };
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setTimeout(() => {
+            try {
+                localStorage.setItem('myrestro_operational_preferences', JSON.stringify(prefs));
+                toast.success('Operational preferences updated!', {
+                    style: { background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)' }
+                });
+            } catch (err) {
+                console.error('Failed to save preferences', err);
+                toast.error('Failed to save preferences');
+            } finally {
+                setIsSaving(false);
+            }
+        }, 400);
+    };
 
     return (
-        <div className="space-y-6 max-w-xl page-enter">
+        <div className="space-y-6">
+            <Toaster position="top-center" />
+
             <div>
-                <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>Preferences</h2>
-                <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>App functionality and danger zone.</p>
+                <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    Operational & Tax Preferences
+                </h2>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    Configure automated government VAT calculations, service surcharges, KDS audio notifications, and inventory rules.
+                </p>
             </div>
 
-            <div className="rounded-3xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-                <h3 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <SlidersHorizontal className="w-4 h-4" weight="fill" style={{ color: 'var(--text-muted)' }} /> App Preferences
-                </h3>
-                <div className="space-y-5">
-                    {[
-                        { label: 'Dark Mode', desc: 'Toggle theme', value: theme === 'dark', onChange: toggleTheme },
-                        { label: 'Notifications', desc: 'Order alerts', value: true, onChange: () => { } },
-                        { label: 'Sound Effects', desc: 'Audio for new orders', value: true, onChange: () => { } },
-                    ].map((pref) => (
-                        <div key={pref.label} className="flex items-center justify-between py-2 border-b last:border-b-0 border-dashed" style={{ borderColor: 'var(--border)' }}>
-                            <div>
-                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{pref.label}</p>
-                                <p className="text-[11px] font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>{pref.desc}</p>
-                            </div>
-                            <Toggle value={pref.value} onChange={pref.onChange} />
+            <form onSubmit={handleSave} className="space-y-6">
+                {/* Tax & Surcharges Card */}
+                <div
+                    className="p-6 rounded-2xl border space-y-5"
+                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                >
+                    <div className="flex items-center gap-2.5 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 text-white">
+                            <Receipt className="w-4 h-4" weight="bold" />
                         </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Developer / Demo Actions */}
-            <div className="rounded-3xl p-6 border border-red-500/20" style={{ background: 'var(--bg-card)' }}>
-                <h3 className="text-sm font-bold mb-4 flex gap-2 items-center text-red-500">
-                    <WarningCircle className="w-4 h-4" weight="fill" /> Danger Zone
-                </h3>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <p className="text-sm font-bold flex gap-2" style={{ color: 'var(--text-primary)' }}>
-                            Reset Demo Data
-                            <span className="text-[8px] bg-red-100/10 text-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Irreversible</span>
-                        </p>
-                        <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>Deletes all orders and transactions from your restaurant and clears the sync queue.</p>
+                        <div>
+                            <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                Taxation & Surcharges
+                            </h3>
+                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                Applied automatically to customer bills, POS checkout, and table settlements.
+                            </p>
+                        </div>
                     </div>
-                    <motion.button 
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleResetDemoData}
-                        disabled={isResetting}
-                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 whitespace-nowrap"
+
+                    <div className="space-y-4">
+                        {/* VAT Toggle & Rate */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Government VAT (Value Added Tax)
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Standard statutory VAT applied across all taxable food & beverage items.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        value={prefs.vatRate}
+                                        onChange={(e) => setNumber('vatRate', parseFloat(e.target.value) || 0)}
+                                        className="w-10 text-center text-xs font-bold font-mono bg-transparent text-white focus:outline-none"
+                                    />
+                                    <span className="text-xs text-white/50 font-bold">%</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => toggle('vatEnabled')}
+                                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                                        prefs.vatEnabled ? 'bg-emerald-500' : 'bg-white/20'
+                                    }`}
+                                >
+                                    <div
+                                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                            prefs.vatEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Service Charge Toggle & Rate */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Restaurant Service Charge
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Discretionary staff hospitality service fee computed prior to VAT.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-lg border border-white/10">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        value={prefs.serviceChargeRate}
+                                        onChange={(e) => setNumber('serviceChargeRate', parseFloat(e.target.value) || 0)}
+                                        className="w-10 text-center text-xs font-bold font-mono bg-transparent text-white focus:outline-none"
+                                    />
+                                    <span className="text-xs text-white/50 font-bold">%</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => toggle('serviceChargeEnabled')}
+                                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                                        prefs.serviceChargeEnabled ? 'bg-emerald-500' : 'bg-white/20'
+                                    }`}
+                                >
+                                    <div
+                                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                            prefs.serviceChargeEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Kitchen Display (KDS) & Audio Preferences */}
+                <div
+                    className="p-6 rounded-2xl border space-y-5"
+                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                >
+                    <div className="flex items-center gap-2.5 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 text-white">
+                            <SpeakerHigh className="w-4 h-4" weight="bold" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                Kitchen Display Screen (KDS) & Audio Chimes
+                            </h3>
+                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                Manage kitchen alert frequencies and sound triggers for incoming tickets.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Kitchen Chime on New Order
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Plays an audible acoustic chime when a customer or waiter submits a ticket.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={playAudioChime}
+                                    className="px-3 py-1 text-[11px] font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center gap-1 transition-all"
+                                >
+                                    <Bell className="w-3.5 h-3.5" />
+                                    Test Chime
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggle('kdsSoundEnabled')}
+                                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                                        prefs.kdsSoundEnabled ? 'bg-emerald-500' : 'bg-white/20'
+                                    }`}
+                                >
+                                    <div
+                                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                            prefs.kdsSoundEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Delayed Ticket Warning Threshold
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Highlights kitchen ticket cards in red if pending longer than this duration.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 bg-white/10 px-3 py-1 rounded-lg border border-white/10">
+                                <input
+                                    type="number"
+                                    min="3"
+                                    max="60"
+                                    value={prefs.ticketAlertMinutes}
+                                    onChange={(e) => setNumber('ticketAlertMinutes', parseInt(e.target.value, 10) || 15)}
+                                    className="w-10 text-center text-xs font-bold font-mono bg-transparent text-white focus:outline-none"
+                                />
+                                <span className="text-xs text-white/50">minutes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Inventory Automation Rules */}
+                <div
+                    className="p-6 rounded-2xl border space-y-5"
+                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                >
+                    <div className="flex items-center gap-2.5 pb-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 text-white">
+                            <Package className="w-4 h-4" weight="bold" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                Inventory Automation & Depletion Rules
+                            </h3>
+                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                Coordinates stock level deductions automatically with kitchen dish completions.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Real-time Recipe Ingredient Depletion
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Automatically deducts flour, cheese, meat, and spices from raw inventory whenever an order is marked Complete.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => toggle('autoDepleteInventory')}
+                                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 shrink-0 ${
+                                    prefs.autoDepleteInventory ? 'bg-emerald-500' : 'bg-white/20'
+                                }`}
+                            >
+                                <div
+                                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                                        prefs.autoDepleteInventory ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/8 bg-white/3">
+                            <div>
+                                <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                    Low Stock Alert Trigger
+                                </h4>
+                                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                    Displays amber alert banners on the inventory and menu pages when stock falls below this quantity.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 bg-white/10 px-3 py-1 rounded-lg border border-white/10">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    value={prefs.lowStockThreshold}
+                                    onChange={(e) => setNumber('lowStockThreshold', parseInt(e.target.value, 10) || 5)}
+                                    className="w-10 text-center text-xs font-bold font-mono bg-transparent text-white focus:outline-none"
+                                />
+                                <span className="text-xs text-white/50">units</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Save CTA */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                    <motion.button
+                        type="submit"
+                        disabled={isSaving}
+                        whileTap={{ scale: 0.97 }}
+                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs transition-all shadow-lg hover:brightness-105 active:scale-98"
+                        style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
                     >
-                        {isResetting ? 'Wiping...' : 'Wipe Orders'}
+                        {isSaving ? (
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <FloppyDisk className="w-4 h-4" weight="bold" />
+                        )}
+                        <span>Save Preferences</span>
                     </motion.button>
                 </div>
-            </div>
+            </form>
         </div>
     );
 }

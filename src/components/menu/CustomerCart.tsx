@@ -200,9 +200,13 @@ export default function CustomerCart({
                                             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
                                         >
                                             {/* Thumbnail */}
-                                            <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0">
-                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                <img src={ci.item.image_url} alt={ci.item.name} className="w-full h-full object-cover" />
+                                            <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 flex items-center justify-center bg-white/5">
+                                                {ci.item.image_url ? (
+                                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                                    <img src={ci.item.image_url} alt={ci.item.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xl opacity-40">🍽️</span>
+                                                )}
                                             </div>
 
                                             {/* Details */}

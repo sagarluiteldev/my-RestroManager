@@ -22,13 +22,17 @@ export default function ReportsPage() {
         // Top selling items
         const itemCounts: Record<string, { name: string; count: number; revenue: number; image: string }> = {};
         orders.forEach((order) => {
-            order.items.forEach((item) => {
-                const key = item.menu_item.id;
+            (order.items || []).forEach((item: any) => {
+                const key = item.menu_item?.id || item.id || item.name || 'item';
+                const name = item.menu_item?.name || item.name || 'Item';
+                const image = item.menu_item?.image_url || item.image_url || '';
+                const price = item.menu_item?.price || item.price || 0;
+                const qty = item.quantity || 1;
                 if (!itemCounts[key]) {
-                    itemCounts[key] = { name: item.menu_item.name, count: 0, revenue: 0, image: item.menu_item.image_url };
+                    itemCounts[key] = { name, count: 0, revenue: 0, image };
                 }
-                itemCounts[key].count += item.quantity;
-                itemCounts[key].revenue += item.menu_item.price * item.quantity;
+                itemCounts[key].count += qty;
+                itemCounts[key].revenue += price * qty;
             });
         });
         const topItems = Object.values(itemCounts)
@@ -106,9 +110,15 @@ export default function ReportsPage() {
                             {stats.topItems.map((item, i) => (
                                 <div key={item.name} className="flex items-center gap-2.5 p-2 rounded-lg" style={{ background: 'var(--bg-input)' }}>
                                     <span className="text-[10px] font-bold w-4 text-center" style={{ color: 'var(--text-muted)' }}>#{i + 1}</span>
-                                    <div className="w-7 h-7 rounded-md overflow-hidden shrink-0" style={{ background: 'var(--bg-elevated)' }}>
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={item.image} alt="" className="w-full h-full object-cover" />
+                                    <div className="w-7 h-7 rounded-md overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                                        {item.image ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img src={item.image} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                                                {item.name.charAt(0)}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
@@ -179,8 +189,8 @@ export default function ReportsPage() {
                                     <tr key={order.id} className="text-[11px]" style={{ borderTop: '1px solid var(--border)' }}>
                                         <td className="py-2 font-medium" style={{ color: 'var(--text-primary)' }}>#{order.id.slice(-5)}</td>
                                         <td className="py-2" style={{ color: 'var(--text-secondary)' }}>T{order.tableNumber}</td>
-                                        <td className="py-2 truncate max-w-[150px]" style={{ color: 'var(--text-secondary)' }}>
-                                            {order.items.map((i) => i.menu_item.name).join(', ')}
+                                        <td className="py-2 truncate max-w-37.5" style={{ color: 'var(--text-secondary)' }}>
+                                            {(order.items || []).map((i: any) => i.menu_item?.name || i.name || 'Item').join(', ')}
                                         </td>
                                         <td className="py-2">
                                             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"

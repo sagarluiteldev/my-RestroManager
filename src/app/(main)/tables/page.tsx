@@ -15,6 +15,7 @@ import {
 } from '@phosphor-icons/react';
 import { useTableStore, TableStatus, RestaurantTable } from '@/stores/useTableStore';
 import { useOrdersStore } from '@/stores/useOrdersStore';
+import { useDataStore } from '@/stores/useDataStore';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import QRCodeLib from 'qrcode';
@@ -271,10 +272,10 @@ export default function TablesPage() {
                                                         color: order.status === 'ready' ? 'var(--success)' : 'var(--warning)',
                                                     }}>{order.status}</span>
                                             </div>
-                                            {order.items.map((item, i) => (
+                                            {(order.items || []).map((item: any, i: number) => (
                                                 <div key={i} className="flex items-center justify-between py-1 text-[11px]"
                                                     style={{ color: 'var(--text-secondary)' }}>
-                                                    <span>{item.menu_item.name}</span>
+                                                    <span>{item.menu_item?.name || item.name || 'Item'}</span>
                                                     <span className="font-medium" style={{ color: 'var(--text-primary)' }}>×{item.quantity}</span>
                                                 </div>
                                             ))}
@@ -303,6 +304,7 @@ export default function TablesPage() {
                                         <button
                                             onClick={() => {
                                                 vacateTable(selectedTable.id);
+                                                useDataStore.getState().vacateTable(selectedTable.id.toString());
                                                 setSelectedTable({ ...selectedTable, status: 'vacant', orderId: undefined, guestCount: undefined });
                                                 toast.success(`Table ${selectedTable.id} cleared`);
                                             }}

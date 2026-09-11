@@ -11,6 +11,8 @@ import {
     Check as Check
 } from '@phosphor-icons/react';
 import { useOrdersStore, KitchenOrder } from '@/stores/useOrdersStore';
+import { useTableStore } from '@/stores/useTableStore';
+import { useDataStore } from '@/stores/useDataStore';
 import toast from 'react-hot-toast';
 import { printReceipt } from '@/lib/printUtils';
 import { PrintOrder } from '@/components/ReceiptPrinter';
@@ -26,19 +28,34 @@ interface BillData {
     grandTotal: number;
 }
 
+function getItemDetails(item: any) {
+    const name = item.menu_item?.name || item.name || 'Menu Item';
+    const price = typeof item.menu_item?.price === 'number'
+        ? item.menu_item.price
+        : typeof item.price === 'number'
+            ? item.price
+            : 0;
+    const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
+    return { name, price, quantity };
+}
+
 export default function BillingPage() {
-    const orders = useOrdersStore((s) => s.orders);
+    const { orders, updateOrderStatus } = useOrdersStore();
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
     const [splitMode, setSplitMode] = useState<'none' | 'equal' | 'by_item'>('none');
     const [splitCount, setSplitCount] = useState(2);
     const [showBill, setShowBill] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Card' | 'Fonepay' | 'eSewa'>('Cash');
 
     const billableOrders = orders.filter((o) => o.status === 'ready' || o.status === 'completed');
     const selectedOrder = orders.find((o) => o.id === selectedOrderId);
 
     const billData: BillData | null = useMemo(() => {
         if (!selectedOrder) return null;
-        const subtotal = selectedOrder.items.reduce((s, i) => s + i.menu_item.price * i.quantity, 0);
+        const subtotal = (selectedOrder.items || []).reduce((s, i) => {
+            const { price, quantity } = getItemDetails(i);
+            return s + price * quantity;
+        }, 0);
         const serviceCharge = subtotal * SERVICE_CHARGE_RATE;
         const vat = (subtotal + serviceCharge) * VAT_RATE;
         const grandTotal = subtotal + serviceCharge + vat;
@@ -52,11 +69,10 @@ export default function BillingPage() {
             id: billData.order.id,
             type: billData.order.type as 'Dine-In' | 'Takeaway' | 'Delivery',
             table_number: billData.order.tableNumber.toString(),
-            items: billData.order.items.map(item => ({
-                name: item.menu_item.name,
-                quantity: item.quantity,
-                price: item.menu_item.price
-            })),
+            items: (billData.order.items || []).map(item => {
+                const { name, price, quantity } = getItemDetails(item);
+                return { name, quantity, price };
+            }),
             subtotal: billData.subtotal,
             tax: billData.vat,
             discount: 0,
@@ -85,7 +101,10 @@ export default function BillingPage() {
                     </div>
                 ) : (
                     orders.map((order) => {
-                        const sub = order.items.reduce((s, i) => s + i.menu_item.price * i.quantity, 0);
+                        const sub = (order.items || []).reduce((s, i) => {
+                            const { price, quantity } = getItemDetails(i);
+                            return s + price * quantity;
+                        }, 0);
                         const total = sub + (sub * SERVICE_CHARGE_RATE) + ((sub + sub * SERVICE_CHARGE_RATE) * VAT_RATE);
                         const isSelected = selectedOrderId === order.id;
                         return (
@@ -102,7 +121,7 @@ export default function BillingPage() {
                                             style={{ background: 'var(--accent-light)', color: 'var(--accent-text)' }}>T{order.tableNumber}</div>
                                         <div>
                                             <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Table {order.tableNumber}</p>
-                                            <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{order.items.length} items</p>
+                                            <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{(order.items || []).length} items</p>
                                         </div>
                                     </div>
                                     <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
@@ -116,14 +135,17 @@ export default function BillingPage() {
                                         }}>{order.status}</span>
                                 </div>
                                 <div className="space-y-0.5">
-                                    {order.items.slice(0, 3).map((item, i) => (
-                                        <div key={i} className="flex justify-between text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                                            <span className="truncate mr-2">{item.menu_item.name} ×{item.quantity}</span>
-                                            <span className="shrink-0">Rs. {(item.menu_item.price * item.quantity).toFixed(0)}</span>
-                                        </div>
-                                    ))}
-                                    {order.items.length > 3 && (
-                                        <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>+{order.items.length - 3} more</p>
+                                    {(order.items || []).slice(0, 3).map((item, i) => {
+                                        const { name, price, quantity } = getItemDetails(item);
+                                        return (
+                                            <div key={i} className="flex justify-between text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+                                                <span className="truncate mr-2">{name} ×{quantity}</span>
+                                                <span className="shrink-0">Rs. {(price * quantity).toFixed(0)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                    {(order.items || []).length > 3 && (
+                                        <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>+{(order.items || []).length - 3} more</p>
                                     )}
                                 </div>
                                 <div className="mt-2 pt-2 flex justify-between text-xs font-bold" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-primary)' }}>
@@ -176,14 +198,17 @@ export default function BillingPage() {
                                             <span className="col-span-2 text-right">Rate</span>
                                             <span className="col-span-2 text-right">Amount</span>
                                         </div>
-                                        {billData.order.items.map((item, i) => (
-                                            <div key={i} className="grid grid-cols-12 text-[11px] py-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                                <span className="col-span-6 truncate pr-1" style={{ color: 'var(--text-primary)' }}>{item.menu_item.name}</span>
-                                                <span className="col-span-2 text-center">{item.quantity}</span>
-                                                <span className="col-span-2 text-right">{item.menu_item.price}</span>
-                                                <span className="col-span-2 text-right font-medium">{(item.menu_item.price * item.quantity).toFixed(0)}</span>
-                                            </div>
-                                        ))}
+                                        {(billData.order.items || []).map((item, i) => {
+                                            const { name, price, quantity } = getItemDetails(item);
+                                            return (
+                                                <div key={i} className="grid grid-cols-12 text-[11px] py-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                                    <span className="col-span-6 truncate pr-1" style={{ color: 'var(--text-primary)' }}>{name}</span>
+                                                    <span className="col-span-2 text-center">{quantity}</span>
+                                                    <span className="col-span-2 text-right">{price}</span>
+                                                    <span className="col-span-2 text-right font-medium">{(price * quantity).toFixed(0)}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
                                     {/* Totals */}
@@ -255,30 +280,80 @@ export default function BillingPage() {
                                     {splitMode === 'by_item' && (
                                         <div className="space-y-1">
                                             <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>Each item can be assigned to a guest:</p>
-                                            {billData.order.items.map((item, i) => (
-                                                <div key={i} className="flex items-center justify-between p-1.5 rounded-md" style={{ background: 'var(--bg-input)' }}>
-                                                    <span className="text-[10px]" style={{ color: 'var(--text-primary)' }}>{item.menu_item.name}</span>
-                                                    <span className="text-[10px] font-bold" style={{ color: 'var(--accent-text)' }}>
-                                                        Rs. {(item.menu_item.price * item.quantity).toFixed(0)}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                            {(billData.order.items || []).map((item, i) => {
+                                                const { name, price, quantity } = getItemDetails(item);
+                                                return (
+                                                    <div key={i} className="flex items-center justify-between p-1.5 rounded-md" style={{ background: 'var(--bg-input)' }}>
+                                                        <span className="text-[10px]" style={{ color: 'var(--text-primary)' }}>{name}</span>
+                                                        <span className="text-[10px] font-bold" style={{ color: 'var(--accent-text)' }}>
+                                                            Rs. {(price * quantity).toFixed(0)}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
 
+                                {/* Payment Method Selector */}
+                                <div className="space-y-1.5 pt-1">
+                                    <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Payment Method</p>
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {(['Cash', 'Card', 'Fonepay', 'eSewa'] as const).map((m) => (
+                                            <button
+                                                key={m}
+                                                type="button"
+                                                onClick={() => setPaymentMethod(m)}
+                                                className={`py-1.5 rounded-lg text-[10px] font-bold transition-all border ${paymentMethod === m ? 'shadow-sm' : ''}`}
+                                                style={{
+                                                    background: paymentMethod === m ? 'var(--accent)' : 'var(--bg-input)',
+                                                    borderColor: paymentMethod === m ? 'var(--accent)' : 'var(--border)',
+                                                    color: paymentMethod === m ? 'var(--accent-fg)' : 'var(--text-secondary)'
+                                                }}
+                                            >
+                                                {m}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {/* Actions */}
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 pt-2">
                                     <motion.button whileTap={{ scale: 0.97 }} onClick={handlePrint}
                                         className="flex-1 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
-                                        style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}>
+                                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
                                         <Printer className="w-3.5 h-3.5" weight="fill" /> Print Bill
                                     </motion.button>
                                     <motion.button whileTap={{ scale: 0.97 }}
-                                        onClick={() => { toast.success('Payment recorded'); setShowBill(false); }}
+                                        onClick={async () => {
+                                            if (!billData) return;
+                                            
+                                            // 1. Mark order completed in Orders Store
+                                            updateOrderStatus(billData.order.id, 'completed');
+
+                                            // 2. Add real transaction to ledger
+                                            await useDataStore.getState().addTransaction({
+                                                order_id: billData.order.id,
+                                                type: 'income',
+                                                category: billData.order.type || 'Dine-In',
+                                                description: `Table ${billData.order.tableNumber} bill settlement`,
+                                                amount: Math.round(billData.grandTotal),
+                                                method: paymentMethod,
+                                                date: new Date().toISOString(),
+                                            });
+
+                                            // 3. Free the table
+                                            if (billData.order.tableNumber) {
+                                                useTableStore.getState().vacateTable(billData.order.tableNumber);
+                                                useDataStore.getState().vacateTable(billData.order.tableNumber.toString());
+                                            }
+
+                                            toast.success(`Payment of Rs. ${billData.grandTotal.toFixed(0)} received (${paymentMethod}). Table ${billData.order.tableNumber} is now vacant!`);
+                                            setShowBill(false);
+                                        }}
                                         className="flex-1 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5"
-                                        style={{ background: 'rgba(46,204,113,0.1)', color: 'var(--success)', border: '1px solid rgba(46,204,113,0.2)' }}>
-                                        <Check className="w-3.5 h-3.5" weight="bold" /> Mark Paid
+                                        style={{ background: 'var(--success)', color: '#fff' }}>
+                                        <Check className="w-3.5 h-3.5" weight="bold" /> Settle & Free Table
                                     </motion.button>
                                 </div>
                             </div>

@@ -21,28 +21,6 @@
   transition: background 0.5s cubic-bezier(0.22, 1, 0.36, 1), color 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Dark mode overrides */
-.landing-root[data-theme="dark"] {
-  --bg-primary: #09090B;
-  --bg-secondary: #111113;
-  --bg-card: #18181B;
-  --bg-elevated: #27272A;
-  --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
-  --accent: #FFFFFF;
-  --accent-fg: #09090B;
-  --border: #27272A;
-  --border-hover: #3F3F46;
-  --shadow-card: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
-  color-scheme: dark;
-}
-
-.landing-root[data-theme="dark"] .cta-banner {
-  background: var(--bg-elevated);
-  --accent-fg: #FAFAFA;
-  --accent: #09090B;
-}
 
 /* ============ HERO ============ */
 .hero-clip-reveal {

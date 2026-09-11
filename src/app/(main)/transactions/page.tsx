@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ArrowDownLeft as ArrowDownLeft, ArrowUpRight as ArrowUpRight,
@@ -8,6 +8,7 @@ import {
     QrCode as QrCode, Wallet as Wallet,
 } from '@phosphor-icons/react';
 import { useOrdersStore } from '@/stores/useOrdersStore';
+import { useDataStore } from '@/stores/useDataStore';
 
 /* eslint-disable react-hooks/purity */
 
@@ -23,33 +24,34 @@ interface Transaction {
     date: string;
 }
 
-// Removed categoryColors array to enforce monochrome premium B&W styling
-
 export default function TransactionsPage() {
     const orders = useOrdersStore((s) => s.orders);
+    const { transactions: storedTxns, initData } = useDataStore();
     const [filter, setFilter] = useState<'all' | TxnType>('all');
 
-    // Generate transactions from orders + dummy expenses
+    useEffect(() => {
+        initData();
+    }, [initData]);
+
+    // Generate transactions from orders + persisted transactions + expenses
     const transactions: Transaction[] = useMemo(() => {
-        const income: Transaction[] = orders.map((o) => ({
-            id: `TXN-${o.id}`,
-            type: 'income' as TxnType,
-            category: 'Dine-In',
-            description: `Table ${o.tableNumber} — ${o.items.map((i) => i.menu_item.name).join(', ')}`,
-            amount: o.total,
-            method: 'Cash',
-            date: o.createdAt,
-        }));
+        const orderIncome: Transaction[] = orders
+            .filter((o) => o.status === 'completed')
+            .map((o) => ({
+                id: `TXN-${o.id}`,
+                type: 'income' as TxnType,
+                category: o.type || 'Dine-In',
+                description: `Table ${o.tableNumber} bill settlement`,
+                amount: o.total,
+                method: 'Cash',
+                date: o.createdAt,
+            }));
 
-        const expenses: Transaction[] = [
-            { id: 'EXP-001', type: 'expense', category: 'Ingredients', description: 'Vegetable market — weekly purchase', amount: 4500, method: 'Cash', date: new Date(Date.now() - 3600000).toISOString() },
-            { id: 'EXP-002', type: 'expense', category: 'Salary', description: 'Staff salary — Ram Sharma (Chef)', amount: 25000, method: 'Bank', date: new Date(Date.now() - 86400000).toISOString() },
-            { id: 'EXP-003', type: 'expense', category: 'Utilities', description: 'NEA electricity bill', amount: 3200, method: 'eSewa', date: new Date(Date.now() - 172800000).toISOString() },
-            { id: 'EXP-004', type: 'expense', category: 'Rent', description: 'Monthly shop rent', amount: 45000, method: 'Bank', date: new Date(Date.now() - 86400000 * 3).toISOString() },
-        ];
-
-        return [...income, ...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [orders]);
+        const combined = [...storedTxns, ...orderIncome];
+        // Deduplicate by ID
+        const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
+        return unique.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [orders, storedTxns]);
 
     const filtered = filter === 'all' ? transactions : transactions.filter((t) => t.type === filter);
     const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);

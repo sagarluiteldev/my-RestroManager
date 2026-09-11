@@ -28,6 +28,7 @@ import { PrintOrder } from '@/components/ReceiptPrinter';
 import { printReceipt, printKOT } from '@/lib/printUtils';
 import { ManagerPinModal } from '@/components/ManagerPinModal';
 import { CheckoutModal } from '@/components/CheckoutModal';
+import { useOrdersStore } from '@/stores/useOrdersStore';
 
 type OrderType = 'Dine-In' | 'Takeaway' | 'Delivery' | 'Room-Service';
 type CartItem = { id: string; name: string; price: number; quantity: number; type: string };
@@ -140,6 +141,28 @@ export default function POSPage() {
             
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const localId = await enqueueOrder(newOrderPayload as any);
+
+            // Sync to real-time KDS and Billing
+            const tableNumInt = parseInt(table?.table_number?.replace(/\D/g, '') || selectedTableId || '1', 10);
+            useOrdersStore.getState().addOrder({
+                tableNumber: isNaN(tableNumInt) ? 1 : tableNumInt,
+                items: cart.map(item => ({
+                    menu_item: {
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        category: item.type === 'beverage' ? 'Drinks' : 'Food',
+                        image_url: '',
+                        is_available: true,
+                        description: '',
+                    },
+                    quantity: item.quantity,
+                })),
+                specialNotes: `${orderType}${tendered ? ` · Tendered: Rs. ${tendered}` : ''}`,
+                type: orderType as any,
+                total,
+                waiterName: 'POS Cashier',
+            });
             
             // Generate print payload for the receipt printer
             const printPayload: PrintOrder = {
@@ -151,7 +174,7 @@ export default function POSPage() {
                 date: new Date()
             };
             
-            toast.success('Order placed!');
+            toast.success('Order placed and sent to Kitchen!');
             setCart([]);
             setOrderType('Dine-In');
             setSelectedTableId(null);
@@ -299,7 +322,7 @@ export default function POSPage() {
             </div>
 
             {/* BOTTOM/RIGHT: Active Order Panel */}
-            <div className="w-full lg:max-w-[400px] flex flex-col shrink-0 lg:border-l" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', borderLeftColor: 'var(--border)' }}>
+            <div className="w-full lg:max-w-100 flex flex-col shrink-0 lg:border-l" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', borderLeftColor: 'var(--border)' }}>
 
                 {/* Order Type Tabs */}
                 <div className="p-5 pb-0 w-full min-w-0 shrink-0">

@@ -19,11 +19,15 @@ export default function RecommendedPairings({ items }: RecommendedPairingsProps)
             <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Goes well with</h3>
             <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
                 {items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2.5 min-w-[180px] p-2 rounded-lg"
+                    <div key={item.id} className="flex items-center gap-2.5 min-w-45 p-2 rounded-lg"
                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                        <div className="w-10 h-10 rounded-md overflow-hidden shrink-0" style={{ background: 'var(--bg-elevated)' }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                            {item.image_url ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{item.name.charAt(0)}</span>
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
                             <h4 className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h4>

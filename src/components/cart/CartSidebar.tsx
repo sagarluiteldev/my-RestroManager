@@ -9,7 +9,8 @@ import {
     Tag as Tag,
     ArrowRight as ArrowRight,
     ChatCircle as MessageSquare,
-    Hash as Hash
+    Hash as Hash,
+    ForkKnife as ForkKnife
 } from '@phosphor-icons/react';
 import { useCartStore } from '@/stores/useCartStore';
 import { useOrdersStore } from '@/stores/useOrdersStore';
@@ -33,7 +34,7 @@ export default function CartSidebar({ isOpen, onClose, isMobile }: CartSidebarPr
     const addOrder = useOrdersStore((s) => s.addOrder);
     const userName = useRoleStore((s) => s.userName);
 
-    const subtotal = items.reduce((sum, ci) => sum + ci.menu_item.price * ci.quantity, 0);
+    const subtotal = items.reduce((sum, ci: any) => sum + (ci.menu_item?.price ?? ci.price ?? 0) * (ci.quantity || 1), 0);
     const discount = promoCode ? subtotal * 0.1 : 0;
     const total = getTotal();
 
@@ -88,35 +89,47 @@ export default function CartSidebar({ isOpen, onClose, isMobile }: CartSidebarPr
             {/* Items */}
             <div className="flex-1 overflow-y-auto px-4 py-2.5 space-y-1.5">
                 <AnimatePresence mode="popLayout">
-                    {items.map((item) => (
-                        <motion.div
-                            key={item.menu_item.id + (item.selected_size || '') + (item.selected_variation || '')}
-                            layout initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20, height: 0 }} transition={{ duration: 0.15 }}
-                            className="flex items-center gap-2 p-2 rounded-lg"
-                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}
-                        >
-                            <div className="w-9 h-9 rounded-md overflow-hidden shrink-0" style={{ background: 'var(--bg-elevated)' }}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={item.menu_item.image_url} alt="" className="w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{item.menu_item.name}</h4>
-                                <p className="text-[10px] font-bold" style={{ color: 'var(--accent-text)' }}>Rs. {item.menu_item.price}</p>
-                            </div>
-                            <div className="flex items-center gap-0.5">
-                                <button onClick={() => decrementQty(item.menu_item.id)}
-                                    className="w-5 h-5 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                                    {item.quantity === 1 ? <Trash2 className="w-2.5 h-2.5" weight="fill" style={{ color: 'var(--danger)' }} /> : <Minus className="w-2.5 h-2.5" weight="bold" />}
-                                </button>
-                                <span className="text-[11px] font-bold w-4 text-center" style={{ color: 'var(--text-primary)' }}>{item.quantity}</span>
-                                <button onClick={() => incrementQty(item.menu_item.id)}
-                                    className="w-5 h-5 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                                    <Plus className="w-2.5 h-2.5" weight="bold" />
-                                </button>
-                            </div>
-                        </motion.div>
-                    ))}
+                    {items.map((item: any) => {
+                        const mItem = item.menu_item || item;
+                        const itemId = mItem.id || item.id || 'item';
+                        const itemName = mItem.name || item.name || 'Item';
+                        const itemPrice = mItem.price || item.price || 0;
+                        const itemImage = mItem.image_url || item.image_url || '';
+
+                        return (
+                            <motion.div
+                                key={itemId + (item.selected_size || '') + (item.selected_variation || '')}
+                                layout initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20, height: 0 }} transition={{ duration: 0.15 }}
+                                className="flex items-center gap-2 p-2 rounded-lg"
+                                style={{ background: 'var(--bg-input)', border: '1px solid var(--border)' }}
+                            >
+                                <div className="w-9 h-9 rounded-md overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'var(--bg-elevated)' }}>
+                                    {itemImage ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={itemImage} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ForkKnife className="w-4 h-4 opacity-40" />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-[11px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{itemName}</h4>
+                                    <p className="text-[10px] font-bold" style={{ color: 'var(--accent-text)' }}>Rs. {itemPrice}</p>
+                                </div>
+                                <div className="flex items-center gap-0.5">
+                                    <button onClick={() => decrementQty(itemId)}
+                                        className="w-5 h-5 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                                        {item.quantity === 1 ? <Trash2 className="w-2.5 h-2.5" weight="fill" style={{ color: 'var(--danger)' }} /> : <Minus className="w-2.5 h-2.5" weight="bold" />}
+                                    </button>
+                                    <span className="text-[11px] font-bold w-4 text-center" style={{ color: 'var(--text-primary)' }}>{item.quantity}</span>
+                                    <button onClick={() => incrementQty(itemId)}
+                                        className="w-5 h-5 rounded flex items-center justify-center" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                                        <Plus className="w-2.5 h-2.5" weight="bold" />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
                 </AnimatePresence>
                 {items.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-8">
@@ -201,7 +214,7 @@ export default function CartSidebar({ isOpen, onClose, isMobile }: CartSidebarPr
             {isOpen && (
                 <motion.div initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }}
                     exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-                    className="h-[calc(100vh-56px)] sticky top-[56px] overflow-hidden"
+                    className="h-[calc(100vh-56px)] sticky top-14 overflow-hidden"
                     style={{ background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border)' }}>
                     {sidebarContent}
                 </motion.div>

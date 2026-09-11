@@ -4,83 +4,66 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    SquaresFour as LayoutDashboard,
-    ForkKnife as UtensilsCrossed,
-    Users as Users,
-    Gear as Settings,
-    ChefHat as ChefHat,
+    House,
+    Pizza,
+    User,
+    Percent,
+    Storefront,
+    ArrowLineRight,
+    ArrowLineLeft,
+    CaretDown,
     SignOut as LogOut,
-    CaretLeft as ChevronLeft,
-    CaretRight as ChevronRight,
-    CaretDown as ChevronDown,
-    Package as Package,
-    Wallet as Wallet,
-    UserCircle as UserCircle,
-    ShoppingCart as ShoppingCart,
 } from '@phosphor-icons/react';
+import { LogoIcon } from '@/components/Logo';
 import toast from 'react-hot-toast';
 import { useRoleStore } from '@/stores/useRoleStore';
 import { useSidebarStore } from '@/stores/useSidebarStore';
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore';
 import { useState } from 'react';
-import { LogoIcon } from '@/components/Logo';
 
-type NavChild = { label: string; href: string, isPremium?: boolean };
+type NavChild = { label: string; href: string; isPremium?: boolean };
 
 interface NavGroup {
     label: string;
     icon: React.ElementType;
     roles: string[];
-    href?: string; // direct link (no children)
+    href?: string;
     children?: NavChild[];
 }
 
 const navGroups: NavGroup[] = [
-    { label: 'Dashboard', icon: LayoutDashboard, roles: ['owner'], href: '/dashboard' },
+    { label: 'Dashboard', icon: House, roles: ['owner', 'admin', 'waiter', 'chef'], href: '/dashboard' },
     {
-        label: 'Orders', icon: ShoppingCart, roles: ['owner', 'waiter'],
-        children: [
-            { label: 'POS Terminal', href: '/pos' },
-            { label: 'Tables', href: '/tables' },
-            { label: 'KDS', href: '/kds', isPremium: true },
-        ],
-    },
-    {
-        label: 'Menu', icon: UtensilsCrossed, roles: ['owner'],
+        label: 'Menu',
+        icon: Pizza,
+        roles: ['owner', 'waiter'],
         children: [
             { label: 'Dishes', href: '/menu' },
             { label: 'Categories', href: '/categories' },
             { label: 'QR Builder', href: '/qr-menu' },
         ],
     },
+    { label: 'Staff', icon: User, roles: ['owner', 'admin'], href: '/staff' },
     {
-        label: 'Finance', icon: Wallet, roles: ['owner'],
+        label: 'Finance',
+        icon: Percent,
+        roles: ['owner', 'admin'],
         children: [
             { label: 'Billing / Invoices', href: '/billing' },
-            { label: 'Subscription', href: '/settings/billing' },
-            { label: 'Reports', href: '/reports', isPremium: true },
-            { label: 'Transactions', href: '/transactions', isPremium: true },
+            { label: 'Reports', href: '/reports' },
+            { label: 'Transactions', href: '/transactions' },
         ],
     },
     {
-        label: 'Inventory', icon: Package, roles: ['owner'],
+        label: 'Orders',
+        icon: Storefront,
+        roles: ['owner', 'waiter'],
         children: [
-            { label: 'All Stock', href: '/inventory' },
-            { label: 'Suppliers', href: '/suppliers' },
-            { label: 'Menu Analytics', href: '/menu-engineering', isPremium: true },
+            { label: 'POS Terminal', href: '/pos' },
+            { label: 'Tables', href: '/tables' },
+            { label: 'KDS', href: '/kds' },
         ],
     },
-    {
-        label: 'Engagement', icon: UserCircle, roles: ['owner'],
-        children: [
-            { label: 'Customers', href: '/customers' },
-            { label: 'Waitlist', href: '/waitlist' },
-            { label: 'Marketing CRM', href: '/marketing', isPremium: true },
-        ],
-    },
-    { label: 'Staff', icon: Users, roles: ['owner'], href: '/staff' },
-    { label: 'KDS Monitor', icon: ChefHat, roles: ['chef'], href: '/kds' },
-    { label: 'Settings', icon: Settings, roles: ['owner', 'waiter', 'chef'], href: '/settings' },
 ];
 
 export default function Sidebar() {
@@ -89,20 +72,18 @@ export default function Sidebar() {
     const { role, logout } = useRoleStore();
     const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebarStore();
     const { subscription } = useSubscriptionStore();
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Orders: true });
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Menu: true, Finance: false, Orders: false });
 
     const hasPremium = subscription?.limits?.hasPrioritySupport || false;
 
     const filteredGroups = navGroups.map(g => {
         if (!g.children) return g;
-        // Filter out premium children if the user doesn't have premium
         return {
             ...g,
             children: g.children.filter(c => !c.isPremium || hasPremium)
         };
     }).filter((g) => {
-        if (!role) return true; // Show all if no role (loading)
-        // Admin/Owner can see everything. Others are filtered.
+        if (!role) return true;
         if (role === 'owner' || role === 'admin') return true;
         return g.roles.includes(role);
     });
@@ -130,185 +111,180 @@ export default function Sidebar() {
         }
     };
 
-    const sidebarWidth = collapsed ? 60 : 230;
+    const sidebarWidth = collapsed ? 72 : 230;
 
-    // Shared sidebar content renderer
     const renderSidebarContent = (isMobileContext: boolean) => (
-        <div className="flex flex-col w-full h-full overflow-hidden">
-            {/* Logo */}
-            <div className={`flex items-center h-[80px] shrink-0 justify-between ${collapsed && !isMobileContext ? 'justify-center w-full' : 'px-5'}`}>
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--accent)' }}>
-                        <LogoIcon size={20} className="text-(--accent-fg)" />
-                    </div>
-                    {(!collapsed || isMobileContext) && (
-                        <span
-                            className="text-[17px] font-bold whitespace-nowrap overflow-hidden text-ellipsis font-['Outfit'] tracking-tight pb-[2px]"
-                            style={{ color: 'var(--text-primary)' }}
-                        >myRestro Manager</span>
+        <div className="flex flex-col w-full h-full overflow-hidden bg-black text-white justify-between select-none">
+            {/* Top Area: Logo + Nav Items */}
+            <div className="flex flex-col w-full">
+                {/* Logo (Original R logo - white) */}
+                <div className={`flex items-center h-19 shrink-0 ${collapsed && !isMobileContext ? 'justify-center' : 'px-5 justify-between'}`}>
+                    <Link href="/dashboard" className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-105">
+                            <LogoIcon size={26} className="text-white" />
+                        </div>
+                        {(!collapsed || isMobileContext) && (
+                            <span className="text-[17px] font-bold tracking-tight font-['Outfit'] text-white">
+                                myRestro
+                            </span>
+                        )}
+                    </Link>
+                    {isMobileContext && (
+                        <button
+                            onClick={() => setMobileOpen(false)}
+                            className="p-2 text-gray-400 hover:text-white"
+                        >
+                            ✕
+                        </button>
                     )}
                 </div>
-                {isMobileContext && (
-                    <button
-                        onClick={() => setMobileOpen(false)}
-                        className="p-2 rounded-lg transition-colors flex items-center justify-center"
-                        style={{ color: 'var(--text-secondary)' }}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg>
-                    </button>
-                )}
+
+                {/* Vertical Navigation Tabs */}
+                <nav className={`py-4 ${collapsed && !isMobileContext ? 'space-y-6 px-0' : 'space-y-2 px-3'}`}>
+                    {filteredGroups.map((group) => {
+                        const active = isGroupActive(group);
+                        const isOpen = openGroups[group.label];
+                        const hasChildren = group.children && group.children.length > 0;
+                        const showLabels = !collapsed || isMobileContext;
+
+                        // Collapsed view (Icon only with left blue pill indicator on active)
+                        if (!showLabels) {
+                            return (
+                                <div key={group.label} className="relative flex items-center justify-center w-full">
+                                    {active && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-md bg-[#3B82F6] shadow-sm" />
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            if (group.href) router.push(group.href);
+                                            else if (group.children?.length) router.push(group.children[0].href);
+                                        }}
+                                        className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+                                            active
+                                                ? 'text-white'
+                                                : 'text-gray-500 hover:text-gray-200'
+                                        }`}
+                                        title={group.label}
+                                    >
+                                        <group.icon className="w-6 h-6" weight={active ? 'fill' : 'regular'} />
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        // Expanded view
+                        if (group.href && !hasChildren) {
+                            return (
+                                <Link key={group.label} href={group.href} className="block w-full" onClick={() => isMobileContext && setMobileOpen(false)}>
+                                    <div
+                                        className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition-colors ${
+                                            active ? 'bg-zinc-900 text-white font-semibold' : 'text-gray-400 hover:text-white hover:bg-zinc-900/50'
+                                        }`}
+                                    >
+                                        <group.icon className="w-5 h-5 shrink-0" weight={active ? 'fill' : 'regular'} />
+                                        <span className="text-sm">{group.label}</span>
+                                    </div>
+                                </Link>
+                            );
+                        }
+
+                        return (
+                            <div key={group.label}>
+                                <button
+                                    onClick={() => toggleGroup(group.label)}
+                                    className={`flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl transition-colors ${
+                                        active ? 'text-white font-semibold' : 'text-gray-400 hover:text-white hover:bg-zinc-900/50'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3.5">
+                                        <group.icon className="w-5 h-5 shrink-0" weight={active ? 'fill' : 'regular'} />
+                                        <span className="text-sm">{group.label}</span>
+                                    </div>
+                                    <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.15 }}>
+                                        <CaretDown className="w-3.5 h-3.5 opacity-50" weight="bold" />
+                                    </motion.div>
+                                </button>
+                                <AnimatePresence>
+                                    {isOpen && group.children && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="ml-7 pl-3 space-y-1 border-l border-zinc-800 my-1">
+                                                {group.children.map((child) => {
+                                                    const childActive = pathname === child.href;
+                                                    return (
+                                                        <Link key={child.href} href={child.href} onClick={() => isMobileContext && setMobileOpen(false)}>
+                                                            <div
+                                                                className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                                    childActive ? 'text-white font-bold bg-zinc-900' : 'text-gray-400 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                {child.label}
+                                                            </div>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })}
+                </nav>
             </div>
 
-            {/* Nav */}
-            <nav className={`flex-1 py-4 space-y-2 overflow-y-auto hide-scrollbar ${collapsed && !isMobileContext ? 'px-1.5' : 'px-4'}`}>
-                {filteredGroups.map((group) => {
-                    const active = isGroupActive(group);
-                    const isOpen = openGroups[group.label];
-                    const hasChildren = group.children && group.children.length > 0;
-                    const showLabels = !collapsed || isMobileContext;
+            {/* Bottom Area: Collapse Toggle & Log Out */}
+            <div className={`pb-6 ${collapsed && !isMobileContext ? 'flex flex-col items-center gap-4' : 'px-4 space-y-2'}`}>
+                {(!collapsed || isMobileContext) ? (
+                    <button
+                        onClick={handleSignOut}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-400 hover:text-white rounded-xl hover:bg-zinc-900 transition-colors cursor-pointer"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span>Log Out</span>
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleSignOut}
+                        className="w-11 h-11 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer"
+                        title="Log Out"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                )}
 
-                    // Direct link (no children)
-                    if (group.href && !hasChildren) {
-                        return (
-                            <Link key={group.label} href={group.href} className="block w-full" onClick={() => isMobileContext && setMobileOpen(false)}>
-                                <div
-                                    className={`flex items-center w-full py-3 rounded-xl transition-colors relative ${!showLabels ? 'justify-center' : 'gap-3.5 px-3'}`}
-                                    style={{
-                                        background: active ? 'var(--accent)' : 'transparent',
-                                        color: active ? 'var(--accent-fg)' : 'var(--text-secondary)',
-                                    }}
-                                    title={!showLabels ? group.label : undefined}
-                                >
-                                    <group.icon className="w-5 h-5 shrink-0" weight={active ? "fill" : "regular"} />
-                                    {showLabels && (
-                                        <span className="text-sm font-medium whitespace-nowrap flex-1">{group.label}</span>
-                                    )}
-                                    {showLabels && group.label === 'Customers' && (
-                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}>2</div>
-                                    )}
-                                </div>
-                            </Link>
-                        );
-                    }
-
-                    // Group with children
-                    return (
-                        <div key={group.label}>
-                            <button
-                                onClick={() => {
-                                    if (!showLabels && group.children?.length) {
-                                        router.push(group.children[0].href);
-                                        if (isMobileContext) setMobileOpen(false);
-                                    } else {
-                                        toggleGroup(group.label);
-                                    }
-                                }}
-                                className={`flex items-center w-full py-3 rounded-xl transition-colors ${!showLabels ? 'justify-center' : 'gap-3.5 px-3'}`}
-                                style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
-                                title={!showLabels ? group.label : undefined}
-                            >
-                                <group.icon className="w-5 h-5 shrink-0" weight={active ? "fill" : "regular"} />
-                                {showLabels && (
-                                    <>
-                                        <span className="text-sm font-medium whitespace-nowrap flex-1 text-left">{group.label}</span>
-                                        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.15 }}>
-                                            <ChevronDown className="w-4 h-4 opacity-40" weight="bold" />
-                                        </motion.div>
-                                    </>
-                                )}
-                            </button>
-                            <AnimatePresence>
-                                {showLabels && isOpen && group.children && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="ml-[22px] pl-2.5 space-y-0.5" style={{ borderLeft: '1px solid var(--border)' }}>
-                                            {group.children.map((child) => {
-                                                const childActive = pathname === child.href;
-                                                return (
-                                                    <Link key={child.href} href={child.href} onClick={() => isMobileContext && setMobileOpen(false)}>
-                                                        <div
-                                                            className="px-2 py-[5px] rounded-md text-[11px] font-medium transition-colors"
-                                                            style={{
-                                                                background: childActive ? 'var(--accent-light)' : 'transparent',
-                                                                color: childActive ? 'var(--accent-text)' : 'var(--text-muted)',
-                                                            }}
-                                                        >{child.label}</div>
-                                                    </Link>
-                                                );
-                                            })}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    );
-                })}
-            </nav>
-
-            {/* Sign Out */}
-            <div className={`${collapsed && !isMobileContext ? 'px-1.5' : 'px-4'} pb-8 mt-4`}>
+                {/* Bottom Collapse / Expand Button (matching the arrow in the screenshot) */}
                 <button
-                    onClick={handleSignOut}
-                    className={`flex items-center w-full py-3 rounded-xl transition-all font-medium ${collapsed && !isMobileContext ? 'justify-center' : 'justify-start gap-3 px-2'}`}
-                    style={{ color: 'var(--text-secondary)' }}
+                    onClick={toggleCollapsed}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                    title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
-                    <LogOut className="w-5 h-5 shrink-0" weight="regular" />
-                    {(!collapsed || isMobileContext) && (
-                        <span className="text-sm whitespace-nowrap overflow-hidden">Log Out</span>
+                    {collapsed ? (
+                        <ArrowLineRight className="w-5 h-5" weight="bold" />
+                    ) : (
+                        <ArrowLineLeft className="w-5 h-5" weight="bold" />
                     )}
                 </button>
             </div>
-
-            {/* Upgrade Plan */}
-            {role === 'owner' && (!collapsed || isMobileContext) && (
-                <Link href="/pricing" className="px-2 pb-3 block" onClick={() => isMobileContext && setMobileOpen(false)}>
-                    <div
-                        className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl transition-all relative overflow-hidden group border"
-                        style={{
-                            background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1))',
-                            borderColor: 'rgba(139,92,246,0.2)',
-                            color: 'var(--text-primary)'
-                        }}
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-                        <div className="flex-1 flex items-center justify-between min-w-0">
-                            <span className="text-[12px] font-bold whitespace-nowrap">Upgrade Plan</span>
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-white/10" style={{ color: '#8b5cf6' }}>Pro</span>
-                        </div>
-                    </div>
-                </Link>
-            )}
         </div>
     );
 
     return (
         <>
-            {/* Desktop Sidebar — always rendered, never removed from DOM */}
+            {/* Desktop Sidebar */}
             <motion.div
                 animate={{ width: sidebarWidth }}
-                transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.5 }}
-                className="hidden lg:flex fixed left-0 top-0 h-screen z-40 overflow-visible flex-col"
-                style={{
-                    background: 'var(--bg-secondary)',
-                    borderRight: '1px solid var(--border)'
-                }}
+                transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.3 }}
+                className="hidden lg:flex fixed left-0 top-0 h-screen z-40 overflow-hidden flex-col shadow-xl"
+                style={{ background: '#000000' }}
             >
                 {renderSidebarContent(false)}
-
-                {/* Collapse Toggle */}
-                <button
-                    onClick={toggleCollapsed}
-                    className="absolute -right-3 top-4 w-6 h-6 rounded-full flex items-center justify-center border shadow-sm z-50 transition-colors"
-                    style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-                >
-                    {collapsed ? <ChevronRight className="w-3 h-3" weight="bold" /> : <ChevronLeft className="w-3 h-3" weight="bold" />}
-                </button>
             </motion.div>
 
-            {/* Mobile Sidebar — overlay, only when mobileOpen */}
+            {/* Mobile Sidebar Overlay */}
             <AnimatePresence>
                 {mobileOpen && (
                     <>
@@ -316,21 +292,15 @@ export default function Sidebar() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+                            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
                             onClick={() => setMobileOpen(false)}
                         />
                         <motion.div
                             initial={{ x: '-100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
-                            transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.5 }}
-                            className="fixed left-0 top-0 h-screen z-50 flex flex-col lg:hidden"
-                            style={{
-                                width: '85%',
-                                maxWidth: 320,
-                                background: 'var(--bg-secondary)',
-                                borderRight: '1px solid var(--border)'
-                            }}
+                            transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.3 }}
+                            className="fixed left-0 top-0 h-screen z-50 flex flex-col lg:hidden w-64 bg-black"
                         >
                             {renderSidebarContent(true)}
                         </motion.div>

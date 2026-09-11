@@ -177,16 +177,16 @@ export default function Hero() {
                 <div ref={imageRef} style={{ position: 'relative', opacity: 0 }}>
                     <div style={{
                         position: 'relative',
-                        borderRadius: '300px 300px 24px 24px',
+                        borderRadius: 0,
                         overflow: 'hidden',
                         boxShadow: 'var(--shadow-card)',
                         border: '1px solid var(--border)',
                         background: 'var(--bg-secondary)',
-                        aspectRatio: '4/5',
+                        aspectRatio: '3/4',
                     }}>
                         <Image
-                            src="/landing/hero-waitstaff.png"
-                            alt="Nepali waitstaff in a luxury villa using myRestro Manager"
+                            src="/landing/hero-staff.jpg"
+                            alt="Restaurant staff using myRestro Manager"
                             fill
                             priority
                             style={{

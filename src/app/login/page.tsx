@@ -3,14 +3,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    LockKey as Lock,
-    EnvelopeSimple as Mail,
-    ArrowRight as ArrowRight,
     CircleNotch as Loader2,
-    Eye as Eye,
+    Eye,
     EyeClosed as EyeOff,
-    ForkKnife as UtensilsCrossed,
-    User as User
 } from '@phosphor-icons/react';
 import { LogoIcon } from '@/components/Logo';
 import toast from 'react-hot-toast';
@@ -41,7 +36,7 @@ export default function LoginPage() {
                     throw new Error('Please fill in all fields');
                 }
 
-                // 1. Sign up the user (triggers handle_new_user which makes them 'admin' with null restaurant_id)
+                // 1. Sign up user
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: form.email,
                     password: form.password,
@@ -55,7 +50,7 @@ export default function LoginPage() {
                 if (authError) throw authError;
 
                 if (authData.session) {
-                    // Have a live session, create restaurant immediately
+                    // Create restaurant immediately
                     const { error: rpcError } = await supabase.rpc('create_restaurant_and_link', {
                         restaurant_name: form.restaurantName
                     });
@@ -65,15 +60,12 @@ export default function LoginPage() {
                     toast.success('Restaurant created successfully! Welcome owner.');
                     router.push('/dashboard');
                 } else if (authData.user) {
-                    // No session means they need to verify email, but we also lost the restaurant_name...
-                    // Let's store it in local storage so that when they finally log in, we can create it
                     if (typeof window !== 'undefined') {
                         localStorage.setItem('pending_restaurant_name', form.restaurantName);
                     }
                     toast.success('Account created! Please check your email to verify before logging in.');
                     setMode('signin');
                 }
-
             } else {
                 if (!form.email || !form.password) {
                     throw new Error('Please enter email and password');
@@ -93,28 +85,24 @@ export default function LoginPage() {
                     .eq('id', data.user.id)
                     .maybeSingle();
 
-                // Check if they had a pending restaurant to create from a verified-email signup
                 let finalRestaurantId = profile?.restaurant_id;
-                
+
                 if (!finalRestaurantId && selectedRole === 'owner') {
                     const pendingRestro = typeof window !== 'undefined' ? localStorage.getItem('pending_restaurant_name') : null;
                     if (pendingRestro) {
                         const { error: rpcError } = await supabase.rpc('create_restaurant_and_link', {
                             restaurant_name: pendingRestro
                         });
-                        
+
                         if (!rpcError) {
                             if (typeof window !== 'undefined') localStorage.removeItem('pending_restaurant_name');
                             toast.success(`Restaurant "${pendingRestro}" created!`);
-                            
-                            // Re-fetch profile
+
                             const { data: newProfile } = await supabase.from('profiles').select('restaurant_id').eq('id', data.user.id).maybeSingle();
                             finalRestaurantId = newProfile?.restaurant_id;
                         } else {
-                            toast.error("Failed to create restaurant. Please try setting it up again.");
+                            toast.error('Failed to create restaurant. Please try setting it up again.');
                         }
-                    } else {
-                        // Edge case: logged in as owner but no restaurant. Should ideally redirect to an onboarding screen.
                     }
                 }
 
@@ -122,7 +110,6 @@ export default function LoginPage() {
                 setRole(selectedRole, data.user?.user_metadata?.full_name || undefined, finalRestaurantId);
 
                 toast.success('Welcome back!');
-                // Route them based on their profile role
                 if (selectedRole === 'chef') {
                     router.push('/kds');
                 } else if (selectedRole === 'waiter') {
@@ -138,136 +125,193 @@ export default function LoginPage() {
         }
     };
 
+    const handleDemoLogin = async (r: UserRole) => {
+        setLoading(true);
+        try {
+            // 1. Set Ghost Demo Cookie (Middleware bypass)
+            document.cookie = 'myrestro_demo_session=true; path=/; max-age=86400;';
+
+            // 2. Set Local Role Store
+            useRoleStore.getState().setDemo(r);
+
+            // 3. Seed initial data
+            seedDemoData();
+
+            toast.success(`Welcome to ${r === 'chef' ? 'Kitchen' : r === 'waiter' ? 'Staff' : 'Manager'} Demo!`);
+
+            // 4. Redirect
+            router.push(r === 'chef' || r === 'kitchen' ? '/kds' : r === 'waiter' ? '/tables' : '/dashboard');
+        } catch (err) {
+            console.error('Demo login failed:', err);
+            toast.error('Demo access failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-            <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, var(--text-primary) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-
+        <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-10 bg-[#F4F5F7]">
+            {/* Main Auth Card */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full max-w-[380px] relative z-10"
+                initial={{ opacity: 0, scale: 0.98, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-265 rounded-3xl overflow-hidden bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] flex flex-col-reverse md:flex-row border border-gray-200/80"
             >
-                {/* Header */}
-                <div className="flex flex-col items-center mb-8">
-                    <motion.div
-                        initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-lg"
-                        style={{ background: 'var(--accent)', boxShadow: '0 8px 32px -8px var(--accent)' }}
-                    >
-                        <LogoIcon size={32} className="text-(--accent-fg)" />
-                    </motion.div>
-                    <h1 className="text-2xl font-bold font-['Outfit'] tracking-tight mb-1" style={{ color: 'var(--text-primary)' }}>
-                        myRestro Manager
-                    </h1>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {mode === 'signin' ? 'Sign in to your restaurant' : 'Register your new restaurant'}
-                    </p>
-                </div>
+                {/* ─── LEFT COLUMN: Login Forms & Actions ─── */}
+                <div className="w-full md:w-[54%] lg:w-[52%] p-7 sm:p-9 lg:p-11 flex flex-col justify-between">
+                    <div>
+                        {/* Brand Logo Header */}
+                        <div className="flex items-center gap-3 mb-7">
+                            <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center shrink-0 shadow-xs">
+                                <LogoIcon size={24} className="text-white" />
+                            </div>
+                            <div>
+                                <span className="text-[19px] font-extrabold tracking-tight font-['Outfit'] text-gray-900 block leading-none">
+                                    myRestro
+                                </span>
+                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mt-0.5">
+                                    Restaurant Manager
+                                </span>
+                            </div>
+                        </div>
 
-                {/* Main Card */}
-                <div className="rounded-2xl p-6 shadow-xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                        {/* Title & Subtitle */}
+                        <div className="mb-6">
+                            <h1 className="text-[24px] sm:text-[27px] font-extrabold text-gray-900 font-['Outfit'] tracking-tight">
+                                {mode === 'signin' ? 'Welcome back' : 'Create an account'}
+                            </h1>
+                            <p className="text-[13px] text-gray-500 mt-1 font-normal">
+                                {mode === 'signin'
+                                    ? 'Sign in to access your dashboard, POS, and kitchen operations.'
+                                    : 'Start managing your restaurant tables, orders, and staff today.'}
+                            </p>
+                        </div>
 
+                        <form onSubmit={handleAuth} className="space-y-3.5">
+                            {/* Signup extra fields */}
+                            <AnimatePresence mode="popLayout">
+                                {mode === 'signup' && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="space-y-3.5"
+                                    >
+                                        <div>
+                                            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                                Restaurant Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Bistro Royale"
+                                                value={form.restaurantName}
+                                                onChange={(e) => setForm({ ...form, restaurantName: e.target.value })}
+                                                className="w-full rounded-xl py-3 px-4 text-[13px] bg-gray-50/70 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 outline-none text-gray-900 transition-all placeholder:text-gray-400"
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                                Full Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. John Doe"
+                                                value={form.fullName}
+                                                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                                                className="w-full rounded-xl py-3 px-4 text-[13px] bg-gray-50/70 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 outline-none text-gray-900 transition-all placeholder:text-gray-400"
+                                                disabled={loading}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-                    {/* Mode is toggled at the bottom now */}
+                            {/* Email Input */}
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                    Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    placeholder="manager@myrestro.com"
+                                    value={form.email}
+                                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                    className="w-full rounded-xl py-3 px-4 text-[13px] bg-gray-50/70 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 outline-none text-gray-900 transition-all placeholder:text-gray-400"
+                                    disabled={loading}
+                                />
+                            </div>
 
+                            {/* Password Input with Eye Toggle */}
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        placeholder="••••••••••••"
+                                        value={form.password}
+                                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                        className="w-full rounded-xl py-3 pl-4 pr-11 text-[13px] bg-gray-50/70 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 outline-none text-gray-900 transition-all placeholder:text-gray-400"
+                                        disabled={loading}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700 transition-colors"
+                                        disabled={loading}
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" weight="bold" /> : <Eye className="w-4 h-4" weight="bold" />}
+                                    </button>
+                                </div>
+                            </div>
 
-                    <form onSubmit={handleAuth} className="space-y-4">
-                        <AnimatePresence mode="popLayout">
-                            {mode === 'signup' && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="space-y-4"
+                            {/* Sub-links row: Sign Up toggle & Forgot Password */}
+                            <div className="flex items-center justify-between text-[12px] pt-1">
+                                <div>
+                                    {mode === 'signin' ? (
+                                        <span className="text-gray-500">
+                                            Don&apos;t have an account?{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => setMode('signup')}
+                                                className="font-bold text-gray-900 hover:underline cursor-pointer"
+                                            >
+                                                Sign up
+                                            </button>
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-500">
+                                            Already have an account?{' '}
+                                            <button
+                                                type="button"
+                                                onClick={() => setMode('signin')}
+                                                className="font-bold text-gray-900 hover:underline cursor-pointer"
+                                            >
+                                                Sign in
+                                            </button>
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => toast('Please contact your restaurant administrator to reset your password.')}
+                                    className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-[12px]"
                                 >
-                                    <div className="relative">
-                                        <UtensilsCrossed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" weight="fill" style={{ color: 'var(--text-muted)' }} />
-                                        <input
-                                            type="text"
-                                            placeholder="Restaurant Name"
-                                            value={form.restaurantName}
-                                            onChange={(e) => setForm({ ...form, restaurantName: e.target.value })}
-                                            className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                                            style={{
-                                                background: 'var(--bg-input)', border: '1px solid var(--border)',
-                                                color: 'var(--text-primary)', '--tw-ring-color': 'var(--accent-light)',
-                                            } as React.CSSProperties}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                    <div className="relative">
-                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" weight="fill" style={{ color: 'var(--text-muted)' }} />
-                                        <input
-                                            type="text"
-                                            placeholder="Your Full Name"
-                                            value={form.fullName}
-                                            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                                            className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                                            style={{
-                                                background: 'var(--bg-input)', border: '1px solid var(--border)',
-                                                color: 'var(--text-primary)', '--tw-ring-color': 'var(--accent-light)',
-                                            } as React.CSSProperties}
-                                            disabled={loading}
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                    Forgot Password?
+                                </button>
+                            </div>
 
-                        <div className="relative">
-                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" weight="fill" style={{ color: 'var(--text-muted)' }} />
-                            <input
-                                type="email"
-                                placeholder="Email Address"
-                                value={form.email}
-                                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                className="w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                                style={{
-                                    background: 'var(--bg-input)', border: '1px solid var(--border)',
-                                    color: 'var(--text-primary)', '--tw-ring-color': 'var(--accent-light)',
-                                } as React.CSSProperties}
-                                disabled={loading}
-                            />
-                        </div>
-
-                        <div className="relative">
-                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" weight="fill" style={{ color: 'var(--text-muted)' }} />
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Password"
-                                value={form.password}
-                                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                                className="w-full rounded-xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:ring-2 transition-all"
-                                style={{
-                                    background: 'var(--bg-input)', border: '1px solid var(--border)',
-                                    color: 'var(--text-primary)', '--tw-ring-color': 'var(--accent-light)',
-                                } as React.CSSProperties}
-                                disabled={loading}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                                style={{ color: 'var(--text-muted)' }}
-                                disabled={loading}
-                            >
-                                {showPassword ? <EyeOff className="w-4 h-4" weight="bold" /> : <Eye className="w-4 h-4" weight="bold" />}
-                            </button>
-                        </div>
-
-                        <AnimatePresence mode="popLayout">
+                            {/* Role Selection Chips (When in signin mode) */}
                             {mode === 'signin' && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="pt-1"
-                                >
-                                    <p className="text-[10px] font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Login As</p>
+                                <div className="pt-2">
+                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+                                        Account Role
+                                    </label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {(['owner', 'chef', 'waiter'] as UserRole[]).map((r) => {
                                             const isSelected = selectedRole === r;
@@ -276,102 +320,90 @@ export default function LoginPage() {
                                                     key={r}
                                                     type="button"
                                                     onClick={() => setSelectedRole(r)}
-                                                    className={`py-2 px-1 rounded-lg text-[11px] font-bold transition-all border ${isSelected ? 'shadow-sm' : ''}`}
-                                                    style={{
-                                                        background: isSelected ? 'var(--bg-card)' : 'transparent',
-                                                        borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
-                                                        color: isSelected ? 'var(--accent)' : 'var(--text-secondary)'
-                                                    }}
+                                                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer text-center ${
+                                                        isSelected
+                                                            ? 'bg-gray-900 text-white border-gray-900 shadow-xs'
+                                                            : 'bg-gray-50/70 text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-100'
+                                                    }`}
                                                 >
                                                     {r === 'owner' ? 'Manager' : r === 'chef' ? 'Kitchen' : 'Staff'}
                                                 </button>
                                             );
                                         })}
                                     </div>
-                                </motion.div>
+                                </div>
                             )}
-                        </AnimatePresence>
 
-                        <motion.button
-                            type="submit"
-                            disabled={loading || (!form.email || !form.password || (mode === 'signup' && (!form.restaurantName || !form.fullName)))}
-                            whileTap={{ scale: 0.98 }}
-                            className="w-full py-3 mt-4 font-bold rounded-xl flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                                background: 'var(--accent)',
-                                color: 'var(--accent-fg)',
-                                boxShadow: '0 4px 14px -6px var(--accent)'
-                            }}
-                        >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                <>
-                                    <span>{mode === 'signin' ? 'Sign In' : 'Create Restaurant'}</span>
-                                    <ArrowRight className="w-4 h-4" weight="bold" />
-                                </>
-                            )}
-                        </motion.button>
-
-                        <div className="pt-4 text-center text-xs">
-                            {mode === 'signin' ? (
-                                <p style={{ color: 'var(--text-muted)' }}>
-                                    Building a new restaurant?{' '}
-                                    <button type="button" onClick={() => setMode('signup')} style={{ color: 'var(--accent)' }} className="font-bold hover:underline transition-all">Sign Up / Register</button>
-                                </p>
-                            ) : (
-                                <p style={{ color: 'var(--text-muted)' }}>
-                                    Already have a restaurant?{' '}
-                                    <button type="button" onClick={() => setMode('signin')} style={{ color: 'var(--accent)' }} className="font-bold hover:underline transition-all">Log In</button>
-                                </p>
-                            )}
-                        </div>
-                    </form>
-
-                    {/* Demo Login Options */}
-                    <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-                        <p className="text-xs text-center font-medium mb-4" style={{ color: 'var(--text-muted)' }}>
-                            Quick Demo Access
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                            {(['owner', 'chef', 'waiter'] as UserRole[]).map((r) => (
-                                <button
-                                    key={`demo-${r}`}
-                                    type="button"
-                                    onClick={async () => {
-                                        setLoading(true);
-                                        try {
-                                            const role = r as UserRole;
-
-                                            // 1. Set the Ghost Demo Cookie (Middleware Bypass)
-                                            document.cookie = "myrestro_demo_session=true; path=/; max-age=86400;";
-
-                                            // 2. Set the Local Role Store
-                                            useRoleStore.getState().setDemo(role);
-
-                                            // 3. Seed initial data for demo
-                                            seedDemoData();
-
-                                            toast.success(`Welcome to ${role.charAt(0).toUpperCase() + role.slice(1)} Demo!`);
-
-                                            // 3. Redirect
-                                            router.push(role === 'chef' || role === 'kitchen' ? '/kds' : '/dashboard');
-                                        } catch (err) {
-                                            console.error("Ghost Demo failed:", err);
-                                            toast.error('Demo access failed');
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }}
-                                    disabled={loading}
-                                    className="py-2 px-1 rounded-lg text-[10px] font-bold transition-all border hover:bg-black/5 dark:hover:bg-white/5"
-                                    style={{
-                                        borderColor: 'var(--border)',
-                                        color: 'var(--text-secondary)'
-                                    }}
+                            {/* Submit Button */}
+                            <div className="pt-3">
+                                <motion.button
+                                    type="submit"
+                                    disabled={loading || (!form.email || !form.password || (mode === 'signup' && (!form.restaurantName || !form.fullName)))}
+                                    whileTap={{ scale: 0.99 }}
+                                    className="w-full py-3.5 px-6 rounded-xl bg-gray-900 hover:bg-black active:scale-[0.99] text-white font-bold text-[13px] tracking-wider uppercase shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
-                                    {r === 'owner' ? 'Owner Setup' : r === 'chef' ? 'Chef Demo' : 'Waiter Demo'}
-                                </button>
-                            ))}
+                                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                        <span>{mode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+                                    )}
+                                </motion.button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Bottom Area: Quick Demo Access & Contact Support */}
+                    <div className="pt-6 mt-6 border-t border-gray-100 space-y-4">
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                                Quick Demo Access
+                            </p>
+                            <div className="grid grid-cols-3 gap-2">
+                                {([
+                                    { role: 'owner', label: 'Owner Setup' },
+                                    { role: 'chef', label: 'Chef Demo' },
+                                    { role: 'waiter', label: 'Waiter Demo' },
+                                ] as const).map(({ role: r, label }) => (
+                                    <button
+                                        key={`demo-${r}`}
+                                        type="button"
+                                        onClick={() => handleDemoLogin(r)}
+                                        disabled={loading}
+                                        className="py-2.5 px-2 rounded-xl text-[11px] font-bold transition-all border border-gray-200 bg-gray-50 hover:bg-white hover:border-gray-900 hover:text-gray-900 text-gray-700 shadow-2xs cursor-pointer text-center truncate"
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
+
+                        {/* Contact Support */}
+                        <div className="text-center pt-1 text-[12px] text-gray-500">
+                            Having trouble?{' '}
+                            <a
+                                href="mailto:support@myrestro.com"
+                                className="font-semibold text-gray-900 hover:underline"
+                            >
+                                Contact support@myrestro.com
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ─── RIGHT COLUMN: Restaurant Illustration Image ─── */}
+                <div className="w-full md:w-[46%] lg:w-[48%] relative min-h-80 md:min-h-160 bg-[#dfd7cc] overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/images/login-illustration.png"
+                        alt="Restaurant Waiter & Dining Experience"
+                        className="w-full h-full object-cover object-center absolute inset-0"
+                    />
+                    {/* Subtle gradient vignette at the base with sleek info overlay on desktop */}
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent hidden md:flex flex-col justify-end p-8 text-white">
+                        <span className="text-[11px] uppercase tracking-widest font-extrabold text-amber-200/90 drop-shadow-xs">
+                            Modern Restaurant Operations
+                        </span>
+                        <h2 className="text-[20px] font-extrabold font-['Outfit'] tracking-tight mt-1 text-white leading-tight drop-shadow-sm">
+                            Seamless table service, kitchen flow & real-time analytics.
+                        </h2>
                     </div>
                 </div>
             </motion.div>

@@ -1,283 +1,527 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useOrdersStore } from '@/stores/useOrdersStore';
-import { useTableStore } from '@/stores/useTableStore';
 import {
-    Bag,
-    Armchair,
+    Receipt,
     Wallet,
-    Users,
-    ArrowUpRight,
-    ArrowDownRight,
-    ForkKnife,
-    Coffee,
-    CheckCircle
+    TrendUp,
+    DotsThree,
+    CaretDown,
+    ArrowRight,
+    Star,
+    Percent,
 } from '@phosphor-icons/react';
-
-/* ─── Minimalist Bar Chart ─── */
-function BarChart({ data, height = 200 }: { data: { label: string; value: number }[]; height?: number }) {
-    const [hoveredIdx, setHoveredIdx] = useState<number | null>(3);
-    const max = Math.max(...data.map((d) => d.value), 1);
-    const w = 1000, h = height;
-    const padding = 20;
-    const chartH = h - padding * 2;
-    const barW = 48; // width of each bar
-    const gap = (w - (data.length * barW)) / (data.length > 1 ? data.length - 1 : 1);
-
-    return (
-        <div className="w-full relative mt-4 mb-8" style={{ height }}>
-            <svg width="100%" height="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="overflow-visible">
-                {data.map((d, i) => {
-                    const barH = (d.value / max) * chartH;
-                    const x = i * (barW + gap);
-                    const y = h - padding - barH;
-                    const isHovered = hoveredIdx === i;
-
-                    return (
-                        <g key={i} onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)} style={{ cursor: 'pointer' }}>
-                            <rect
-                                x={x}
-                                y={y}
-                                width={barW}
-                                height={barH}
-                                rx="8"
-                                fill={isHovered ? 'var(--accent)' : 'var(--chart-2)'}
-                                style={{ transition: 'all 0.3s ease' }}
-                            />
-                            {/* Removed SVG Tooltip to fix squeezing issue */}
-                        </g>
-                    );
-                })}
-            </svg>
-
-            {/* HTML Tooltip Overlay to prevent SVG aspect ratio distortion */}
-            {data.map((d, i) => {
-                const isHovered = hoveredIdx === i;
-                const xCenterPct = ((i * (barW + gap) + barW / 2) / w) * 100;
-                const barH = (d.value / max) * chartH;
-                const y = h - padding - barH;
-
-                return (
-                    <AnimatePresence key={`tooltip-${i}`}>
-                        {isHovered && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, x: '-50%' }}
-                                animate={{ opacity: 1, y: 0, x: '-50%' }}
-                                exit={{ opacity: 0, scale: 0.9, x: '-50%' }}
-                                className="absolute pointer-events-none flex flex-col items-center z-10"
-                                style={{ left: `${xCenterPct}%`, top: Math.max(0, y - 48) }}
-                            >
-                                <div className="px-3.5 py-1.5 rounded-lg text-sm font-bold shadow-md whitespace-nowrap" style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)' }}>
-                                    NPR {d.value.toLocaleString()}
-                                </div>
-                                <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-8 border-l-transparent border-r-transparent drop-shadow-sm" style={{ borderTopColor: 'var(--text-primary)' }} />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                );
-            })}
-            
-            {/* Perfectly Aligned Labels */}
-            <div className="absolute top-full left-0 w-full mt-3 h-5">
-                {data.map((d, i) => {
-                    const xCenterPct = ((i * (barW + gap) + barW / 2) / w) * 100;
-                    return (
-                        <span 
-                            key={i} 
-                            className="absolute -translate-x-1/2 text-[13px] font-semibold text-center w-12" 
-                            style={{ 
-                                left: `${xCenterPct}%`,
-                                color: hoveredIdx === i ? 'var(--text-primary)' : 'var(--text-muted)' 
-                            }}>
-                            {d.label}
-                        </span>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
 
 export default function DashboardPage() {
     const router = useRouter();
-    const orders = useOrdersStore(s => s.orders);
-    const tables = useTableStore(s => s.tables);
+    const orders = useOrdersStore((s) => s.orders);
 
-    // Calculate dynamic stats
-    const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
-    const todaysRevenue = todayOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.total, 0);
-    const activeOrders = orders.filter(o => o.status !== 'completed');
+    // Live metrics calculation with fallback to reference screenshot values
+    const todayOrders = orders.filter(
+        (o) => new Date(o.createdAt).toDateString() === new Date().toDateString()
+    );
+    const todaysRevenue = todayOrders
+        .filter((o) => o.status === 'completed')
+        .reduce((sum, o) => sum + o.total, 0);
 
-    const occupiedTables = tables.filter(t => t.status !== 'vacant').length;
-    const occupancyRate = tables.length > 0 ? Math.round((occupiedTables / tables.length) * 100) : 0;
+    const formattedSales = todaysRevenue > 0 ? `$ ${todaysRevenue.toLocaleString()}` : '$ 1,231';
+    const formattedExpense = todaysRevenue > 0 ? `$ ${Math.round(todaysRevenue * 0.35).toLocaleString()}` : '$ 4,231';
+    const formattedRevenue = todaysRevenue > 0 ? `$ ${Math.round(todaysRevenue * 0.65).toLocaleString()}` : '$ 2,221';
+    const formattedTicker = todaysRevenue > 0 ? `$ ${(todaysRevenue * 0.77).toFixed(2)}` : '$ 950.00';
 
-    // Estimate walk-ins from live tables or today's orders mapping
-    const liveGuests = tables.reduce((sum, t) => sum + (t.guestCount || 0), 0);
-    // For a fully accurate walk-in we'd need historical order guest counts, using a scaled mock based on revenue for now alongside live guests
-    const totalWalkins = liveGuests + Math.floor(todaysRevenue / 800) || 12;
+    // Interactive controls
+    const [timeRange, setTimeRange] = useState('Weekly');
+    const [timeRangeOpen, setTimeRangeOpen] = useState(false);
+    const [hoveredCell, setHoveredCell] = useState<{ row: string; col: string; val: number } | null>(null);
 
-    // Restaurant Specific KPI Cards
-    const kpis = [
-        { label: 'Today\'s Revenue', value: todaysRevenue > 0 ? `NPR ${(todaysRevenue / 1000).toFixed(1)}k` : 'NPR 0', icon: Wallet, trend: todaysRevenue > 0 ? '+12%' : '0%', up: true },
-        { label: 'Active Orders', value: activeOrders.length.toString(), icon: Bag, trend: activeOrders.length > 0 ? `+${activeOrders.length}` : '0', up: true },
-        { label: 'Table Occupancy', value: `${occupancyRate}%`, icon: Armchair, trend: '-2%', up: false },
-        { label: 'Total Walk-ins', value: totalWalkins.toString(), icon: Users, trend: '+18%', up: true },
+    // Heatmap data exactly matching reference screenshot
+    const heatDays = ['Fri', 'Sun', 'Mon', 'Tue'];
+    const heatHours = ['1 am', '2 am', '3 am', '4 am', '5 am'];
+    const heatmapValues: Record<string, number[]> = {
+        Fri: [12, 22, 38, 48, 20],
+        Sun: [8, 16, 36, 52, 22],
+        Mon: [14, 34, 50, 88, 30], // Mon 4 am is highlighted with "88"
+        Tue: [10, 20, 38, 46, 24]
+    };
+
+    const getCellBg = (val: number, isHighlight: boolean) => {
+        if (isHighlight) return '#3B82F6';
+        if (val > 45) return '#93C5FD';
+        if (val > 30) return '#BAE6FD';
+        if (val > 15) return '#E0F2FE';
+        return '#F0F9FF';
+    };
+
+    // Employee List exactly matching reference screenshot
+    const employees = [
+        {
+            name: 'Adam Smith',
+            role: 'Sales manager',
+            rating: '5',
+            hours: '35 hr/Week',
+            avatarImg: '/images/avatar_emp_1.png'
+        },
+        {
+            name: 'MC Carthy',
+            role: 'Cash manager',
+            rating: '5',
+            hours: '45 hr/Week',
+            avatarImg: '/images/avatar_emp_2.png'
+        },
+        {
+            name: 'Will Hunger',
+            role: 'Sales man',
+            rating: '4.5',
+            hours: '34 hr/Week',
+            avatarImg: '/images/avatar_emp_3.png'
+        },
+        {
+            name: 'Jack Sulivan',
+            role: 'Manager',
+            rating: '5',
+            hours: '5 hr/Week',
+            avatarImg: '/images/avatar_emp_4.png'
+        }
     ];
 
-    // Daily Revenue chart data
-    const chartData = [
-        { label: 'Mon', value: 35000 },
-        { label: 'Tue', value: 42000 },
-        { label: 'Wed', value: 38000 },
-        { label: 'Thu', value: 55000 },
-        { label: 'Fri', value: 72000 },
-        { label: 'Sat', value: todaysRevenue > 0 ? todaysRevenue : 85000 },
-        { label: 'Sun', value: 64000 },
+    // Recent Order Table items exactly matching reference screenshot
+    const foodItems = [
+        {
+            name: 'Pizza',
+            price: '$ 32.23',
+            iconImg: '/images/food_icon_1.png',
+            totalItem: '12 k PC',
+            totalSale: '$ 9.6 k',
+            remaining: '11.11 k'
+        },
+        {
+            name: 'Burger',
+            price: '$ 12.87',
+            iconImg: '/images/food_icon_2.png',
+            totalItem: '23 k PC',
+            totalSale: '$ 11.12 k',
+            remaining: '12.12 k'
+        },
+        {
+            name: 'Cake',
+            price: '$ 32.87',
+            iconImg: '/images/food_icon_3.png',
+            totalItem: '1.23 k PC',
+            totalSale: '$ 1.2 k',
+            remaining: '43.54 k'
+        },
+        {
+            name: 'Salad',
+            price: '$ 43.87',
+            iconImg: '/images/food_icon_4.png',
+            totalItem: '2 k PC',
+            totalSale: '$ 9.3 k',
+            remaining: '12.12 k'
+        }
     ];
 
-    const anim = (i: number) => ({ initial: { opacity: 0, y: 15 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.2, type: 'spring' as const, stiffness: 300, damping: 35 } });
+    const cardAnim = (delay = 0) => ({
+        initial: { opacity: 0, y: 10 },
+        animate: { opacity: 1, y: 0 },
+        transition: { delay, duration: 0.3, ease: [0.22, 1, 0.36, 1] as const }
+    });
 
     return (
-        <div className="space-y-6 page-enter pb-8">
-            {/* Top KPI Cards row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                {kpis.map((kpi, i) => (
-                    <motion.div key={kpi.label} {...anim(i)} className="rounded-3xl p-5 flex items-center gap-4 card-hover overflow-hidden relative group"
-                        style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)' }}>
-                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: 'var(--accent-light)' }}>
-                            <kpi.icon className="w-7 h-7" weight="fill" style={{ color: 'var(--accent)' }} />
+        <div className="w-full px-2 sm:px-4 lg:px-6 pb-6 select-none flex flex-col justify-between min-h-[calc(100vh-105px)]">
+            {/* ─── TWO-COLUMN MASTER GRID (Left: Overview+Employee | Right: CustomerStats+Banner+RecentOrder) ─── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-7 items-stretch flex-1">
+                {/* ══════════════ LEFT COLUMN: Overview (Top) + Employee (Bottom) ══════════════ */}
+                <div className="lg:col-span-5 xl:col-span-5 flex flex-col justify-between space-y-6">
+                    {/* 1. Overview Section */}
+                    <motion.div {...cardAnim(0.04)} className="flex flex-col">
+                        <div className="flex items-center justify-between mb-3.5">
+                            <h2 className="text-[22px] xl:text-[24px] font-bold text-gray-900 font-['Outfit'] tracking-tight">
+                                Overview
+                            </h2>
+                            <button
+                                onClick={() => router.push('/reports')}
+                                className="px-3.5 py-1.5 text-[12px] xl:text-[13px] font-medium text-gray-500 hover:text-gray-900 bg-white border border-gray-200/90 rounded-xl hover:border-gray-300 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                View All
+                            </button>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>{kpi.label}</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-2xl lg:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>{kpi.value}</span>
-                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                    style={{ background: kpi.up ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'color-mix(in srgb, var(--danger) 15%, transparent)', color: kpi.up ? 'var(--success)' : 'var(--danger)' }}>
-                                    {kpi.trend}
-                                    {kpi.up ? <ArrowUpRight className="w-3 h-3" strokeWidth={4} /> : <ArrowDownRight className="w-3 h-3" strokeWidth={4} />}
+
+                        {/* 3 Pastel Stat Cards */}
+                        <div className="grid grid-cols-3 gap-3.5 xl:gap-4">
+                            {/* Card 1: Total Sales (Soft Baby Blue #DEF0FF) */}
+                            <div
+                                className="rounded-3xl p-4 xl:p-5 flex flex-col justify-between min-h-35 xl:min-h-38.75 transition-transform hover:-translate-y-0.5 shadow-2xs"
+                                style={{ background: '#DEF0FF' }}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-[#111827] text-white flex items-center justify-center shadow-xs">
+                                        <Receipt className="w-4.5 h-4.5" weight="fill" />
+                                    </div>
+                                    <button className="text-gray-400 hover:text-gray-700 transition-colors p-1">
+                                        <DotsThree className="w-6 h-6" weight="bold" />
+                                    </button>
                                 </div>
+                                <div>
+                                    <p className="text-[12px] xl:text-[13px] font-medium text-gray-500 mb-1">Total Sales</p>
+                                    <p className="text-[22px] xl:text-[26px] font-extrabold text-gray-900 tracking-tight leading-none">
+                                        {formattedSales}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Expense (Soft Pastel Peach #FFE8DB) */}
+                            <div
+                                className="rounded-3xl p-4 xl:p-5 flex flex-col justify-between min-h-35 xl:min-h-38.75 transition-transform hover:-translate-y-0.5 shadow-2xs"
+                                style={{ background: '#FFE8DB' }}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-[#111827] text-white flex items-center justify-center shadow-xs">
+                                        <Wallet className="w-4.5 h-4.5" weight="fill" />
+                                    </div>
+                                    <button className="text-gray-400 hover:text-gray-700 transition-colors p-1">
+                                        <DotsThree className="w-6 h-6" weight="bold" />
+                                    </button>
+                                </div>
+                                <div>
+                                    <p className="text-[12px] xl:text-[13px] font-medium text-gray-500 mb-1">Expense</p>
+                                    <p className="text-[22px] xl:text-[26px] font-extrabold text-gray-900 tracking-tight leading-none">
+                                        {formattedExpense}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Card 3: Revenue (Soft Butter Yellow #FFFAC7) */}
+                            <div
+                                className="rounded-3xl p-4 xl:p-5 flex flex-col justify-between min-h-35 xl:min-h-38.75 transition-transform hover:-translate-y-0.5 shadow-2xs"
+                                style={{ background: '#FFFAC7' }}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-full bg-[#111827] text-white flex items-center justify-center shadow-xs">
+                                        <TrendUp className="w-4.5 h-4.5" weight="bold" />
+                                    </div>
+                                    <button className="text-gray-400 hover:text-gray-700 transition-colors p-1">
+                                        <DotsThree className="w-6 h-6" weight="bold" />
+                                    </button>
+                                </div>
+                                <div>
+                                    <p className="text-[12px] xl:text-[13px] font-medium text-gray-500 mb-1">Revenue</p>
+                                    <p className="text-[22px] xl:text-[26px] font-extrabold text-gray-900 tracking-tight leading-none">
+                                        {formattedRevenue}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sales Sparkline Card */}
+                        <div className="mt-4 bg-white rounded-3xl border border-gray-100 p-4 px-6 flex items-center justify-between shadow-2xs relative overflow-hidden h-22 xl:h-24">
+                            <div className="flex items-center gap-3.5 shrink-0 z-10">
+                                <div className="w-3 h-3 rounded-full bg-[#10B981] shrink-0 shadow-sm" />
+                                <div>
+                                    <p className="text-[18px] xl:text-[21px] font-bold text-gray-900 tracking-tight leading-tight">
+                                        {formattedTicker}
+                                    </p>
+                                    <p className="text-[12px] xl:text-[13px] font-medium text-gray-400 leading-tight">Sales</p>
+                                </div>
+                            </div>
+
+                            {/* SVG Bezier curve line matching reference screenshot */}
+                            <div className="flex-1 ml-6 h-full relative">
+                                <svg viewBox="0 0 200 40" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                                    <defs>
+                                        <linearGradient id="greenSparkGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#10B981" stopOpacity="0.25" />
+                                            <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                                        </linearGradient>
+                                    </defs>
+                                    <path
+                                        d="M 0,24 C 25,14 55,30 85,24 C 115,18 140,8 170,16 C 185,20 195,14 200,12 L 200,40 L 0,40 Z"
+                                        fill="url(#greenSparkGrad)"
+                                    />
+                                    <path
+                                        d="M 0,24 C 25,14 55,30 85,24 C 115,18 140,8 170,16 C 185,20 195,14 200,12"
+                                        fill="none"
+                                        stroke="#10B981"
+                                        strokeWidth="2.5"
+                                        strokeLinecap="round"
+                                    />
+                                    <circle cx="200" cy="12" r="3.5" fill="#10B981" />
+                                </svg>
                             </div>
                         </div>
                     </motion.div>
-                ))}
-            </div>
 
-            {/* Middle Row: Reports Chart + Promo Banner */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Reports - Bar Chart */}
-                <motion.div {...anim(4)} className="lg:col-span-3 rounded-3xl p-8 card-hover" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)' }}>
-                    <div className="flex items-center justify-between mb-2">
-                        <div>
-                            <h3 className="text-base font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Weekly Revenue Flow</h3>
-                            <div className="flex items-center gap-3">
-                                <p className="text-[34px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>NPR 391,000</p>
-                            </div>
+                    {/* 2. Employee Section (Directly under Overview) */}
+                    <motion.div {...cardAnim(0.08)} className="flex flex-col flex-1">
+                        <div className="flex items-center justify-between mb-3.5">
+                            <h2 className="text-[22px] xl:text-[24px] font-bold text-gray-900 font-['Outfit'] tracking-tight">
+                                Employee
+                            </h2>
+                            <button
+                                onClick={() => router.push('/staff')}
+                                className="px-3.5 py-1.5 text-[12px] xl:text-[13px] font-medium text-gray-500 hover:text-gray-900 bg-white border border-gray-200/90 rounded-xl hover:border-gray-300 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                View All
+                            </button>
                         </div>
-                    </div>
-                    <BarChart data={chartData} />
-                </motion.div>
 
-                {/* Promo Banner using Premium Black */}
-                <motion.div {...anim(5)} className="lg:col-span-2 rounded-3xl p-8 flex flex-col justify-between overflow-hidden relative shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}>
-                    {/* Abstract background shapes */}
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-white opacity-5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4 pointer-events-none" />
-
-                    <div className="relative z-10 space-y-4 pt-1">
-                        <span className="inline-block px-4 py-1.5 bg-white/20 backdrop-blur-md text-[11px] font-bold tracking-wider rounded-full" style={{ color: 'var(--accent-fg)' }}>UPGRADE</span>
-                        <h2 className="text-3xl md:text-[32px] font-bold leading-tight pt-2">Empower your restaurant operations!</h2>
-                        <p className="text-sm opacity-80 leading-relaxed font-medium max-w-sm pt-2">Switch to our enterprise tier to unlock multi-branch sync, tailored reports, and advanced inventory.</p>
-                    </div>
-                    <button onClick={() => router.push('/pricing')} className="relative z-10 mt-10 w-full py-4 font-bold text-[15px] rounded-2xl transition-colors shadow-sm active:scale-[0.98]" style={{ background: 'var(--accent-fg)', color: 'var(--accent)' }}>
-                        View Premium Plans
-                    </button>
-                </motion.div>
-            </div>
-
-            {/* Bottom Row: Kitchen Queue + Recent Orders Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Kitchen Queue Feed */}
-                <motion.div {...anim(6)} className="lg:col-span-2 rounded-3xl p-8 card-hover" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)' }}>
-                    <h3 className="text-[22px] font-bold mb-8" style={{ color: 'var(--text-primary)' }}>Kitchen Queue</h3>
-                    <div className="relative border-l-2 ml-4 mx-2 space-y-9" style={{ borderColor: 'var(--border)' }}>
-                        {activeOrders.length === 0 ? (
-                            <p className="text-sm font-medium -ml-4" style={{ color: 'var(--text-muted)' }}>No active orders in queue.</p>
-                        ) : activeOrders.slice(0, 3).map((order) => {
-                            const isReady = order.status === 'ready';
-                            const isPrep = order.status === 'preparing';
-                            const color = isReady ? 'var(--success)' : isPrep ? 'var(--info)' : 'var(--warning)';
-                            const bg = isReady ? 'color-mix(in srgb, var(--success) 15%, transparent)' : isPrep ? 'color-mix(in srgb, var(--info) 15%, transparent)' : 'color-mix(in srgb, var(--warning) 15%, transparent)';
-                            const Icon = isReady ? CheckCircle : isPrep ? ForkKnife : Coffee;
-                            // eslint-disable-next-line react-hooks/purity
-                            const m = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
-                            const timeStr = m < 1 ? 'Just now' : `${m}m ago`;
-                            const items = order.items.slice(0, 2).map((i: any) => `${i.quantity}x ${i.menu_item?.name || i.name || 'Item'}`).join(', ') + (order.items.length > 2 ? '...' : '');
-
-                            return (
-                                <div key={order.id} className="relative pl-8">
-                                    <div className="absolute -left-[19px] top-1.5 w-9 h-9 rounded-full border-[5px] flex items-center justify-center bg-white" style={{ borderColor: 'var(--bg-card)' }}>
-                                        <div className="w-full h-full rounded-full flex items-center justify-center p-[5px]" style={{ background: bg }}>
-                                            <Icon className="w-full h-full" weight="bold" style={{ color: color }} />
+                        {/* Employee Card */}
+                        <div className="bg-white rounded-3xl border border-gray-100 p-5 xl:p-6 shadow-2xs space-y-4 xl:space-y-5 flex-1 flex flex-col justify-around">
+                            {employees.map((emp, idx) => (
+                                <div
+                                    key={emp.name}
+                                    className={`flex items-center justify-between py-1.5 xl:py-2 ${
+                                        idx !== employees.length - 1 ? 'border-b border-gray-50 pb-3 xl:pb-4' : ''
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3.5 xl:gap-4">
+                                        <div className="w-11 h-11 xl:w-12 xl:h-12 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-2xs">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={emp.avatarImg}
+                                                alt={emp.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[14px] xl:text-[15px] font-bold text-gray-900">
+                                                    {emp.name}
+                                                </span>
+                                                <span className="text-[13px] xl:text-[14px] font-bold text-gray-700 ml-0.5">
+                                                    {emp.rating}
+                                                </span>
+                                                <Star className="w-4 h-4 text-amber-400 fill-amber-400" weight="fill" />
+                                            </div>
+                                            <p className="text-[12px] xl:text-[13px] font-medium text-gray-400 mt-0.5">
+                                                {emp.role}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-3.5">
-                                        <div className="mt-0.5">
-                                            <p className="text-[14px] leading-snug" style={{ color: 'var(--text-primary)' }}>
-                                                <span className="font-bold">Table {order.tableNumber}</span> • {items}
-                                            </p>
-                                            <p className="text-xs mt-1 font-medium" style={{ color: 'var(--text-muted)' }}>Ticket created {timeStr}</p>
+
+                                    <span className="text-[13px] xl:text-[14px] font-bold text-gray-600">
+                                        {emp.hours}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* ══════════════ RIGHT COLUMN: (Customer Stat's + Banner) Top + Recent Order Bottom ══════════════ */}
+                <div className="lg:col-span-7 xl:col-span-7 flex flex-col justify-between space-y-6">
+                    {/* Top Pair: Customer Stat's (left) + Try premium version (right) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 xl:gap-6 items-start">
+                        {/* 3. Customer Stat's */}
+                        <motion.div {...cardAnim(0.1)} className="flex flex-col">
+                            <div className="flex items-center justify-between mb-3.5 h-8.5">
+                                <h2 className="text-[22px] xl:text-[24px] font-bold text-gray-900 font-['Outfit'] tracking-tight">
+                                    Customer Stat&apos;s
+                                </h2>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setTimeRangeOpen(!timeRangeOpen)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] xl:text-[13px] font-medium text-gray-500 hover:text-gray-900 bg-white border border-gray-200/90 rounded-xl hover:border-gray-300 transition-colors shadow-2xs cursor-pointer"
+                                    >
+                                        <span>{timeRange}</span>
+                                        <CaretDown className="w-3.5 h-3.5 text-gray-400" weight="bold" />
+                                    </button>
+                                    <AnimatePresence>
+                                        {timeRangeOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 6 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 6 }}
+                                                className="absolute right-0 mt-1.5 w-32 rounded-xl bg-white shadow-xl border border-gray-100 py-1.5 z-30"
+                                            >
+                                                {['Daily', 'Weekly', 'Monthly'].map((t) => (
+                                                    <button
+                                                        key={t}
+                                                        onClick={() => {
+                                                            setTimeRange(t);
+                                                            setTimeRangeOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-3.5 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50"
+                                                    >
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+
+                            {/* Customer Heatmap Card */}
+                            <div className="bg-white rounded-3xl border border-gray-100 p-5 xl:p-6 shadow-2xs flex flex-col justify-between min-h-62.5 xl:min-h-68.75">
+                                <div className="space-y-3 xl:space-y-3.5">
+                                    {heatDays.map((day) => (
+                                        <div key={day} className="flex items-center gap-3">
+                                            <span className="w-8 text-[12px] xl:text-[13px] font-medium text-gray-400 text-right shrink-0">
+                                                {day}
+                                            </span>
+                                            <div className="grid grid-cols-5 gap-2 xl:gap-2.5 flex-1">
+                                                {heatHours.map((hour, hIdx) => {
+                                                    const val = heatmapValues[day][hIdx];
+                                                    const isHighlighted = day === 'Mon' && hour === '4 am';
+                                                    const bg = getCellBg(val, isHighlighted);
+
+                                                    return (
+                                                        <div
+                                                            key={`${day}-${hour}`}
+                                                            onMouseEnter={() => setHoveredCell({ row: day, col: hour, val })}
+                                                            onMouseLeave={() => setHoveredCell(null)}
+                                                            className={`h-8.5 xl:h-9.5 rounded-[7px] flex items-center justify-center transition-all duration-150 cursor-pointer ${
+                                                                isHighlighted
+                                                                    ? 'bg-[#3B82F6] text-white shadow-xs font-extrabold text-[13px] xl:text-[14px]'
+                                                                    : 'hover:opacity-80'
+                                                            }`}
+                                                            style={{ background: bg }}
+                                                        >
+                                                            {isHighlighted ? '88' : null}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+
+                                {/* Hour labels along bottom */}
+                                <div className="flex items-center gap-3 pt-2">
+                                    <span className="w-8 shrink-0" />
+                                    <div className="grid grid-cols-5 gap-2 xl:gap-2.5 flex-1 text-center">
+                                        {heatHours.map((hour) => (
+                                            <span key={hour} className="text-[11px] xl:text-[12px] font-medium text-gray-400">
+                                                {hour}
+                                            </span>
+                                        ))}
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </motion.div>
 
-                {/* Recent Orders Table */}
-                <motion.div {...anim(7)} className="lg:col-span-3 rounded-3xl p-8 card-hover overflow-hidden" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)' }}>
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-[22px] font-bold" style={{ color: 'var(--text-primary)' }}>Live Orders</h3>
+                                {hoveredCell && (
+                                    <div className="text-[11px] text-gray-500 text-center font-medium mt-1">
+                                        {hoveredCell.row} {hoveredCell.col}: {hoveredCell.val} customers
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {/* 4. Try premium version Card */}
+                        <motion.div {...cardAnim(0.14)} className="flex flex-col">
+                            <div className="h-8.5 mb-3.5" /> {/* Aligns card top with Customer Stat's */}
+                            <div className="bg-white rounded-3xl border border-gray-100 p-4 xl:p-5 shadow-2xs flex flex-col justify-between min-h-62.5 xl:min-h-68.75 relative overflow-hidden group">
+                                {/* Real Chef Illustration from reference mockup */}
+                                <div className="relative w-full h-36.25 xl:h-41.25 flex items-center justify-center overflow-hidden">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src="/images/dashboard-chef-real.png"
+                                        alt="Chef Tasting Food"
+                                        className="h-full max-h-36.25 xl:max-h-41.25 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                </div>
+
+                                {/* Bottom Yellow CTA Strip (#FFFAC7) */}
+                                <div
+                                    onClick={() => router.push('/pricing')}
+                                    className="rounded-[20px] p-3 xl:p-3.5 px-4 flex items-center justify-between cursor-pointer transition-all hover:brightness-95 active:scale-[0.98]"
+                                    style={{ background: '#FFFAC7' }}
+                                >
+                                    <div className="pr-1.5 min-w-0">
+                                        <p className="text-[13px] xl:text-[14px] font-bold text-gray-900 leading-tight truncate">
+                                            Try premium version
+                                        </p>
+                                        <p className="text-[11px] xl:text-[12px] font-medium text-gray-600 leading-tight mt-0.5 truncate">
+                                            You will get more feature here.
+                                        </p>
+                                    </div>
+                                    <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-full bg-[#111827] text-white flex items-center justify-center shrink-0 shadow-xs transition-transform group-hover:translate-x-0.5">
+                                        <ArrowRight className="w-4 h-4" weight="bold" />
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
-                    <div className="overflow-x-auto hide-scrollbar">
-                        <table className="w-full text-left border-collapse min-w-[550px]">
-                            <thead>
-                                <tr className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                                    <th className="pb-4 pr-4">Order ID</th>
-                                    <th className="pb-4 px-4 w-1/4">Time</th>
-                                    <th className="pb-4 px-4 w-1/4">Type</th>
-                                    <th className="pb-4 px-4 w-1/4">Amount</th>
-                                    <th className="pb-4 pl-4 text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[
-                                    { no: '#ORD-901', time: '18:42', type: 'Dine-In (T4)', amount: 'NPR 1,250', status: 'PREPARING' },
-                                    { no: '#ORD-902', time: '18:35', type: 'Takeaway', amount: 'NPR 4,810', status: 'READY' },
-                                    { no: '#ORD-903', time: '18:20', type: 'Dine-In (T2)', amount: 'NPR 950', status: 'PAID' },
-                                ].map((inv, i) => (
-                                    <tr key={i} className="text-[14px] border-b last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ borderColor: 'var(--border)' }}>
-                                        <td className="py-5 pr-4 font-bold" style={{ color: 'var(--text-secondary)' }}>{inv.no}</td>
-                                        <td className="py-5 px-4 font-medium" style={{ color: 'var(--text-secondary)' }}>{inv.time}</td>
-                                        <td className="py-5 px-4 font-bold" style={{ color: 'var(--text-primary)' }}>{inv.type}</td>
-                                        <td className="py-5 px-4 font-bold" style={{ color: 'var(--text-primary)' }}>{inv.amount}</td>
-                                        <td className="py-5 pl-4 flex justify-end">
-                                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wide flex w-max align-center items-center" style={{
-                                                background: inv.status === 'PAID' ? 'color-mix(in srgb, var(--success) 15%, transparent)' : inv.status === 'READY' ? 'color-mix(in srgb, var(--info) 15%, transparent)' : 'color-mix(in srgb, var(--warning) 15%, transparent)',
-                                                color: inv.status === 'PAID' ? 'var(--success)' : inv.status === 'READY' ? 'var(--info)' : 'var(--warning)'
-                                            }}>
-                                                {inv.status}
-                                            </span>
-                                        </td>
+
+                    {/* 5. Recent Order Table (Directly under Customer Stats & Banner) */}
+                    <motion.div {...cardAnim(0.18)} className="flex flex-col flex-1">
+                        <div className="flex items-center justify-between mb-3.5">
+                            <h2 className="text-[22px] xl:text-[24px] font-bold text-gray-900 font-['Outfit'] tracking-tight">
+                                Recent Order
+                            </h2>
+                            <button
+                                onClick={() => router.push('/billing')}
+                                className="px-3.5 py-1.5 text-[12px] xl:text-[13px] font-medium text-gray-500 hover:text-gray-900 bg-white border border-gray-200/90 rounded-xl hover:border-gray-300 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                View All
+                            </button>
+                        </div>
+
+                        {/* Food-centric Table Card */}
+                        <div className="bg-white rounded-3xl border border-gray-100 p-5 xl:p-6 shadow-2xs overflow-x-auto hide-scrollbar flex-1 flex flex-col justify-around">
+                            <table className="w-full text-left border-collapse min-w-125">
+                                <thead>
+                                    <tr className="text-[12px] xl:text-[13px] font-normal text-gray-400 border-b border-gray-100">
+                                        <th className="pb-3.5 xl:pb-4 font-normal">Food name</th>
+                                        <th className="pb-3.5 xl:pb-4 font-normal">Total Iteam</th>
+                                        <th className="pb-3.5 xl:pb-4 font-normal">Total sale</th>
+                                        <th className="pb-3.5 xl:pb-4 font-normal text-right pr-2">Remaining Iteam</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {foodItems.map((item) => (
+                                        <tr
+                                            key={item.name}
+                                            className="text-[14px] xl:text-[15px] hover:bg-gray-50/50 transition-colors"
+                                        >
+                                            <td className="py-3 xl:py-3.5">
+                                                <div className="flex items-center gap-3.5">
+                                                    <div className="w-10 h-10 xl:w-11 xl:h-11 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-2xs">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={item.iconImg}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 leading-tight text-[14px] xl:text-[15px]">
+                                                            {item.name}
+                                                        </p>
+                                                        <p className="text-[12px] xl:text-[13px] font-medium text-gray-400 leading-tight mt-0.5">
+                                                            {item.price}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td className="py-3 xl:py-3.5 font-bold text-gray-900 text-[14px] xl:text-[15px]">
+                                                {item.totalItem}
+                                            </td>
+
+                                            <td className="py-3 xl:py-3.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] shrink-0 font-bold">
+                                                        <Percent className="w-3 h-3" weight="bold" />
+                                                    </div>
+                                                    <span className="font-bold text-gray-900 text-[14px] xl:text-[15px]">
+                                                        {item.totalSale}
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            <td className="py-3 xl:py-3.5 font-bold text-gray-900 text-[14px] xl:text-[15px] text-right pr-2">
+                                                {item.remaining}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                </div>
             </div>
         </div>
     );

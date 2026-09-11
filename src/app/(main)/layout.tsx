@@ -4,7 +4,6 @@ import { useRef, useState, useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import CartSidebar from '@/components/cart/CartSidebar';
-import { useThemeStore } from '@/stores/useThemeStore';
 import { useSidebarStore } from '@/stores/useSidebarStore';
 import { useRoleStore } from '@/stores/useRoleStore';
 import { useSubscriptionStore } from '@/stores/useSubscriptionStore';
@@ -17,19 +16,22 @@ export default function MainLayout({
 }) {
     const [cartOpen, setCartOpen] = useState(false);
     const cartRef = useRef<HTMLButtonElement>(null);
-    const theme = useThemeStore((s) => s.theme);
     const collapsed = useSidebarStore((s) => s.collapsed);
     const { restaurantId } = useRoleStore();
     const { fetchSubscription } = useSubscriptionStore();
     const { syncDown } = useSync();
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-    }, [theme]);
+        // Dashboard and manager application strictly enforce light mode
+        document.documentElement.setAttribute('data-theme', 'light');
+    }, []);
 
     useEffect(() => {
         const init = async () => {
             try {
+                const { useDataStore } = await import('@/stores/useDataStore');
+                await useDataStore.getState().initData();
+
                 if (restaurantId) {
                     await fetchSubscription(restaurantId);
                     await syncDown();
@@ -42,10 +44,10 @@ export default function MainLayout({
     }, [restaurantId, fetchSubscription, syncDown]);
 
     return (
-        <div className="flex min-h-screen max-w-[100vw] overflow-x-hidden" style={{ background: 'var(--bg-primary)' }}>
+        <div className="flex min-h-screen max-w-[100vw] overflow-x-hidden" style={{ background: '#FFFFFF' }}>
             <Sidebar />
 
-            <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${collapsed ? 'lg:ml-[60px]' : 'lg:ml-[230px]'}`}>
+            <div className={`flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 ${collapsed ? 'lg:ml-18' : 'lg:ml-57.5'}`}>
                 <Header onCartToggle={() => setCartOpen(!cartOpen)} cartRef={cartRef} />
 
                 <div className="flex flex-1 relative min-w-0">
